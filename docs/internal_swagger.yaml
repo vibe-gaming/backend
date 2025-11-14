@@ -1,0 +1,141 @@
+basePath: /api/v1
+definitions:
+  ErrorStruct:
+    properties:
+      error_code:
+        type: integer
+      error_message:
+        type: string
+    type: object
+  v1.userAuthRequest:
+    properties:
+      email:
+        example: mail@mail.com
+        maxLength: 64
+        type: string
+      password:
+        example: notasecretpassword
+        maxLength: 64
+        minLength: 8
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  v1.userAuthResponse:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+    type: object
+  v1.userRegisterRequest:
+    properties:
+      email:
+        example: mail@mail.com
+        maxLength: 64
+        type: string
+      name:
+        example: wazzup
+        maxLength: 64
+        minLength: 2
+        type: string
+      password:
+        example: notasecretpassword
+        maxLength: 64
+        minLength: 8
+        type: string
+    required:
+    - email
+    - name
+    - password
+    type: object
+info:
+  contact: {}
+  description: Backend API
+  title: Backend API
+  version: "1.0"
+paths:
+  /users/auth:
+    post:
+      consumes:
+      - application/json
+      description: Аутентификация пользователей
+      parameters:
+      - description: Аутентификация
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/v1.userAuthRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.userAuthResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+      summary: Аутентификация
+      tags:
+      - User Auth
+  /users/pong:
+    get:
+      consumes:
+      - application/json
+      description: Pong
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+        "500":
+          description: Internal Server Error
+      security:
+      - UserAuth: []
+      summary: Pong
+      tags:
+      - Pong
+  /users/register:
+    post:
+      consumes:
+      - application/json
+      description: Создание аккаунта юзера
+      parameters:
+      - description: Регистрация
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/v1.userRegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+        "500":
+          description: Internal Server Error
+      summary: Регистрация
+      tags:
+      - User Auth
+securityDefinitions:
+  AdminAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+  UserAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
