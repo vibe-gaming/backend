@@ -9,10 +9,20 @@ import (
 	"github.com/vibe-gaming/backend/internal/domain"
 )
 
+type BenefitFilters struct {
+	RegionID     *int
+	Type         *string
+	TargetGroups []string
+	DateFrom     *string
+	DateTo       *string
+	Search       *string
+}
+
 type BenefitRepository interface {
 	Create(ctx context.Context, benefit *domain.Benefit) error
 	GetByID(ctx context.Context, id string) (*domain.Benefit, error)
-	GetAll(ctx context.Context) ([]*domain.Benefit, error)
+	GetAll(ctx context.Context, limit, offset int, filters *BenefitFilters) ([]*domain.Benefit, error)
+	Count(ctx context.Context, filters *BenefitFilters) (int64, error)
 	Update(ctx context.Context, benefit *domain.Benefit) error
 	Delete(ctx context.Context, id string) error
 }
@@ -71,8 +81,8 @@ func (r *benefitRepository) GetByID(ctx context.Context, id string) (*domain.Ben
 	return &benefit, nil
 }
 
-func (r *benefitRepository) GetAll(ctx context.Context) ([]*domain.Benefit, error) {
-	const query = `
+func (r *benefitRepository) GetAll(ctx context.Context, limit, offset int, filters *BenefitFilters) ([]*domain.Benefit, error) {
+	query := `
 		SELECT 
 			bin_to_uuid(id) as id,
 			title,
@@ -91,14 +101,128 @@ func (r *benefitRepository) GetAll(ctx context.Context) ([]*domain.Benefit, erro
 			how_to_use,
 			source_url
 		FROM benefit
-		WHERE deleted_at IS NULL
-	`
+		WHERE deleted_at IS NULL`
+
+	args := []interface{}{}
+
+	// Применяем фильтры
+	if filters != nil {
+		// Фильтр по региону
+		if filters.RegionID != nil {
+			query += ` AND JSON_CONTAINS(region, ?)`
+			args = append(args, fmt.Sprintf("%d", *filters.RegionID))
+		}
+
+		// Фильтр по типу
+		if filters.Type != nil {
+			query += ` AND type = ?`
+			args = append(args, *filters.Type)
+		}
+
+		// Фильтр по целевым группам (хотя бы одна группа должна совпадать)
+		if len(filters.TargetGroups) > 0 {
+			query += ` AND (`
+			for i, group := range filters.TargetGroups {
+				if i > 0 {
+					query += ` OR `
+				}
+				query += `JSON_CONTAINS(target_group_ids, ?)`
+				args = append(args, fmt.Sprintf(`"%s"`, group))
+			}
+			query += `)`
+		}
+
+		// Фильтр по датам (льгота должна быть активна в указанном периоде)
+		if filters.DateFrom != nil {
+			query += ` AND valid_to >= ?`
+			args = append(args, *filters.DateFrom)
+		}
+		if filters.DateTo != nil {
+			query += ` AND valid_from <= ?`
+			args = append(args, *filters.DateTo)
+		}
+
+		// Текстовый поиск по названию и описанию
+		if filters.Search != nil && *filters.Search != "" {
+			searchTerm := "%" + *filters.Search + "%"
+			query += ` AND (title LIKE ? OR description LIKE ?)`
+			args = append(args, searchTerm, searchTerm)
+		}
+	}
+
+	query += `
+		ORDER BY created_at DESC
+		LIMIT ? OFFSET ?`
+
+	args = append(args, limit, offset)
+
 	var benefits []*domain.Benefit
-	err := r.db.SelectContext(ctx, &benefits, query)
+	err := r.db.SelectContext(ctx, &benefits, query, args...)
 	if err != nil {
 		return nil, err
 	}
 	return benefits, nil
+}
+
+func (r *benefitRepository) Count(ctx context.Context, filters *BenefitFilters) (int64, error) {
+	query := `
+		SELECT COUNT(*) 
+		FROM benefit 
+		WHERE deleted_at IS NULL`
+
+	args := []interface{}{}
+
+	// Применяем те же фильтры
+	if filters != nil {
+		// Фильтр по региону
+		if filters.RegionID != nil {
+			query += ` AND JSON_CONTAINS(region, ?)`
+			args = append(args, fmt.Sprintf("%d", *filters.RegionID))
+		}
+
+		// Фильтр по типу
+		if filters.Type != nil {
+			query += ` AND type = ?`
+			args = append(args, *filters.Type)
+		}
+
+		// Фильтр по целевым группам
+		if len(filters.TargetGroups) > 0 {
+			query += ` AND (`
+			for i, group := range filters.TargetGroups {
+				if i > 0 {
+					query += ` OR `
+				}
+				query += `JSON_CONTAINS(target_group_ids, ?)`
+				args = append(args, fmt.Sprintf(`"%s"`, group))
+			}
+			query += `)`
+		}
+
+		// Фильтр по датам
+		if filters.DateFrom != nil {
+			query += ` AND valid_to >= ?`
+			args = append(args, *filters.DateFrom)
+		}
+		if filters.DateTo != nil {
+			query += ` AND valid_from <= ?`
+			args = append(args, *filters.DateTo)
+		}
+
+		// Текстовый поиск
+		if filters.Search != nil && *filters.Search != "" {
+			searchTerm := "%" + *filters.Search + "%"
+			query += ` AND (title LIKE ? OR description LIKE ?)`
+			args = append(args, searchTerm, searchTerm)
+		}
+	}
+
+	var count int64
+	err := r.db.GetContext(ctx, &count, query, args...)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 func (r *benefitRepository) Update(ctx context.Context, benefit *domain.Benefit) error {
