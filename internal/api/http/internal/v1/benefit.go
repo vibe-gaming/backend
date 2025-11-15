@@ -31,6 +31,7 @@ type benefitResponse struct {
 	TargetGroups []string `json:"target_groups"`
 	Longitude    *float64 `json:"longitude,omitempty"`
 	Latitude     *float64 `json:"latitude,omitempty"`
+	CityID       *string  `json:"city_id,omitempty"`
 	Region       []int    `json:"region"`
 	Requirement  string   `json:"requirement"`
 	HowToUse     *string  `json:"how_to_use,omitempty"`
@@ -46,18 +47,30 @@ type benefitsListResponse struct {
 
 // @Summary Get Benefits List
 // @Tags Benefits
-// @Description Получить список всех льгот с пагинацией, фильтрацией и поиском
+// @Description Получить список всех льгот с пагинацией, фильтрацией и умным поиском
+// @Description
+// @Description Поиск использует Full-Text Search MySQL с автоматическим поиском по частичному совпадению:
+// @Description - Поиск "транс" найдет "транспорт", "транспортный" и т.д.
+// @Description - Поиск "пенсион" найдет "пенсионер", "пенсионный" и т.д.
+// @Description - Каждое слово ищется с начала (prefix matching)
+// @Description
+// @Description Можно использовать Boolean операторы для сложных запросов:
+// @Description   + обязательное слово: "+пенсионер +транспорт"
+// @Description   - исключить слово: "льгота -студент"
+// @Description   * явный wildcard: "транс*"
+// @Description   "" точная фраза: "общественный транспорт"
 // @ModuleID getBenefitsList
 // @Accept  json
 // @Produce  json
 // @Param page query int false "Номер страницы (по умолчанию 1)"
 // @Param limit query int false "Количество элементов на странице (по умолчанию 10, максимум 100)"
 // @Param region query int false "ID региона для фильтрации"
+// @Param city_id query string false "UUID города для фильтрации"
 // @Param type query string false "Тип льготы (federal, regional, commercial)"
-// @Param target_groups query string false "Целевые группы через запятую (pensioners, disabled, students и т.д.)"
+// @Param target_groups query string false "Целевые группы через запятой (pensioners, disabled, students и т.д.)"
 // @Param date_from query string false "Дата начала периода (YYYY-MM-DD)"
 // @Param date_to query string false "Дата окончания периода (YYYY-MM-DD)"
-// @Param search query string false "Поисковый запрос по названию и описанию"
+// @Param search query string false "Поисковый запрос (автоматически ищет по частичному совпадению)"
 // @Success 200 {object} benefitsListResponse
 // @Failure 400 {object} ErrorStruct
 // @Failure 500 {object} ErrorStruct
@@ -85,6 +98,10 @@ func (h *Handler) getBenefitsList(c *gin.Context) {
 		if r, err := strconv.Atoi(regionStr); err == nil && r > 0 {
 			filters.RegionID = &r
 		}
+	}
+
+	if cityID := c.Query("city_id"); cityID != "" {
+		filters.CityID = &cityID
 	}
 
 	if typeStr := c.Query("type"); typeStr != "" {
@@ -132,6 +149,12 @@ func (h *Handler) getBenefitsList(c *gin.Context) {
 			targetGroups = append(targetGroups, string(tg))
 		}
 
+		var cityID *string
+		if benefit.CityID != nil {
+			cityIDStr := benefit.CityID.String()
+			cityID = &cityIDStr
+		}
+
 		response.Benefits = append(response.Benefits, benefitResponse{
 			ID:           benefit.ID.String(),
 			Title:        benefit.Title,
@@ -142,6 +165,7 @@ func (h *Handler) getBenefitsList(c *gin.Context) {
 			TargetGroups: targetGroups,
 			Longitude:    benefit.Longitude,
 			Latitude:     benefit.Latitude,
+			CityID:       cityID,
 			Region:       benefit.Region,
 			Requirement:  benefit.Requirement,
 			HowToUse:     benefit.HowToUse,
@@ -189,6 +213,12 @@ func (h *Handler) getBenefitByID(c *gin.Context) {
 		targetGroups = append(targetGroups, string(tg))
 	}
 
+	var cityID *string
+	if benefit.CityID != nil {
+		cityIDStr := benefit.CityID.String()
+		cityID = &cityIDStr
+	}
+
 	response := benefitResponse{
 		ID:           benefit.ID.String(),
 		Title:        benefit.Title,
@@ -199,6 +229,7 @@ func (h *Handler) getBenefitByID(c *gin.Context) {
 		TargetGroups: targetGroups,
 		Longitude:    benefit.Longitude,
 		Latitude:     benefit.Latitude,
+		CityID:       cityID,
 		Region:       benefit.Region,
 		Requirement:  benefit.Requirement,
 		HowToUse:     benefit.HowToUse,

@@ -90,7 +90,8 @@ type Benefit struct {
 	Longitude *float64 `db:"longitude"` // nullable
 	Latitude  *float64 `db:"latitude"`  // nullable
 
-	Region RegionList `db:"region"` // stored as JSON array of region IDs
+	CityID *uuid.UUID `db:"city_id"` // nullable
+	Region RegionList `db:"region"`  // stored as JSON array of region IDs
 
 	Requirement string  `db:"requirment"` // notice spelling to match table
 	HowToUse    *string `db:"how_to_use"` // nullable

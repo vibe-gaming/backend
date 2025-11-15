@@ -18,7 +18,7 @@ const docTemplateinternal = `{
     "paths": {
         "/benefits": {
             "get": {
-                "description": "Получить список всех льгот с пагинацией, фильтрацией и поиском",
+                "description": "Получить список всех льгот с пагинацией, фильтрацией и умным поиском\n\nПоиск использует Full-Text Search MySQL с автоматическим поиском по частичному совпадению:\n- Поиск \"транс\" найдет \"транспорт\", \"транспортный\" и т.д.\n- Поиск \"пенсион\" найдет \"пенсионер\", \"пенсионный\" и т.д.\n- Каждое слово ищется с начала (prefix matching)\n\nМожно использовать Boolean операторы для сложных запросов:\n+ обязательное слово: \"+пенсионер +транспорт\"\n- исключить слово: \"льгота -студент\"\n* явный wildcard: \"транс*\"\n\"\" точная фраза: \"общественный транспорт\"",
                 "consumes": [
                     "application/json"
                 ],
@@ -50,13 +50,19 @@ const docTemplateinternal = `{
                     },
                     {
                         "type": "string",
+                        "description": "UUID города для фильтрации",
+                        "name": "city_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
                         "description": "Тип льготы (federal, regional, commercial)",
                         "name": "type",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Целевые группы через запятую (pensioners, disabled, students и т.д.)",
+                        "description": "Целевые группы через запятой (pensioners, disabled, students и т.д.)",
                         "name": "target_groups",
                         "in": "query"
                     },
@@ -74,7 +80,7 @@ const docTemplateinternal = `{
                     },
                     {
                         "type": "string",
-                        "description": "Поисковый запрос по названию и описанию",
+                        "description": "Поисковый запрос (автоматически ищет по частичному совпадению)",
                         "name": "search",
                         "in": "query"
                     }
@@ -446,6 +452,9 @@ const docTemplateinternal = `{
         "v1.benefitResponse": {
             "type": "object",
             "properties": {
+                "city_id": {
+                    "type": "string"
+                },
                 "description": {
                     "type": "string"
                 },

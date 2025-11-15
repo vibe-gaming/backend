@@ -24,6 +24,8 @@ definitions:
     type: object
   v1.benefitResponse:
     properties:
+      city_id:
+        type: string
       description:
         type: string
       how_to_use:
@@ -132,7 +134,19 @@ paths:
     get:
       consumes:
       - application/json
-      description: Получить список всех льгот с пагинацией, фильтрацией и поиском
+      description: |-
+        Получить список всех льгот с пагинацией, фильтрацией и умным поиском
+
+        Поиск использует Full-Text Search MySQL с автоматическим поиском по частичному совпадению:
+        - Поиск "транс" найдет "транспорт", "транспортный" и т.д.
+        - Поиск "пенсион" найдет "пенсионер", "пенсионный" и т.д.
+        - Каждое слово ищется с начала (prefix matching)
+
+        Можно использовать Boolean операторы для сложных запросов:
+        + обязательное слово: "+пенсионер +транспорт"
+        - исключить слово: "льгота -студент"
+        * явный wildcard: "транс*"
+        "" точная фраза: "общественный транспорт"
       parameters:
       - description: Номер страницы (по умолчанию 1)
         in: query
@@ -146,11 +160,15 @@ paths:
         in: query
         name: region
         type: integer
+      - description: UUID города для фильтрации
+        in: query
+        name: city_id
+        type: string
       - description: Тип льготы (federal, regional, commercial)
         in: query
         name: type
         type: string
-      - description: Целевые группы через запятую (pensioners, disabled, students
+      - description: Целевые группы через запятой (pensioners, disabled, students
           и т.д.)
         in: query
         name: target_groups
@@ -163,7 +181,7 @@ paths:
         in: query
         name: date_to
         type: string
-      - description: Поисковый запрос по названию и описанию
+      - description: Поисковый запрос (автоматически ищет по частичному совпадению)
         in: query
         name: search
         type: string

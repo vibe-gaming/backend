@@ -11,11 +11,13 @@ import (
 
 type BenefitFilters struct {
 	RegionID     *int
+	CityID       *string
 	Type         *string
 	TargetGroups []string
 	DateFrom     *string
 	DateTo       *string
 	Search       *string
+	SearchMode   string // "natural" или "boolean"
 }
 
 type BenefitRepository interface {
@@ -39,10 +41,10 @@ func NewBenefitRepository(db *sqlx.DB) BenefitRepository {
 
 func (r *benefitRepository) Create(ctx context.Context, benefit *domain.Benefit) error {
 	const query = `
-	INSERT INTO benefit (id, title, description, valid_from, valid_to, created_at, updated_at, deleted_at, type, target_group_ids, longitude, latitude, region, requirment, how_to_use, source_url)
-	VALUES (uuid_to_bin(?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+	INSERT INTO benefit (id, title, description, valid_from, valid_to, created_at, updated_at, deleted_at, type, target_group_ids, longitude, latitude, city_id, region, requirment, how_to_use, source_url)
+	VALUES (uuid_to_bin(?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, uuid_to_bin(?), ?, ?, ?, ?);
 	`
-	_, err := r.db.ExecContext(ctx, query, benefit.ID, benefit.Title, benefit.Description, benefit.ValidFrom, benefit.ValidTo, benefit.CreatedAt, benefit.UpdatedAt, benefit.DeletedAt, benefit.Type, benefit.TargetGroupIDs, benefit.Longitude, benefit.Latitude, benefit.Region, benefit.Requirement, benefit.HowToUse, benefit.SourceURL)
+	_, err := r.db.ExecContext(ctx, query, benefit.ID, benefit.Title, benefit.Description, benefit.ValidFrom, benefit.ValidTo, benefit.CreatedAt, benefit.UpdatedAt, benefit.DeletedAt, benefit.Type, benefit.TargetGroupIDs, benefit.Longitude, benefit.Latitude, benefit.CityID, benefit.Region, benefit.Requirement, benefit.HowToUse, benefit.SourceURL)
 	if err != nil {
 		return fmt.Errorf("db insert benefit: %w", err)
 	}
@@ -63,6 +65,7 @@ func (r *benefitRepository) GetByID(ctx context.Context, id string) (*domain.Ben
 			target_group_ids,
 			longitude,
 			latitude,
+			bin_to_uuid(city_id) as city_id,
 			region,
 			requirment,
 			how_to_use,
@@ -96,6 +99,7 @@ func (r *benefitRepository) GetAll(ctx context.Context, limit, offset int, filte
 			target_group_ids,
 			longitude,
 			latitude,
+			bin_to_uuid(city_id) as city_id,
 			region,
 			requirment,
 			how_to_use,
@@ -111,6 +115,12 @@ func (r *benefitRepository) GetAll(ctx context.Context, limit, offset int, filte
 		if filters.RegionID != nil {
 			query += ` AND JSON_CONTAINS(region, ?)`
 			args = append(args, fmt.Sprintf("%d", *filters.RegionID))
+		}
+
+		// Фильтр по городу
+		if filters.CityID != nil {
+			query += ` AND city_id = UUID_TO_BIN(?)`
+			args = append(args, *filters.CityID)
 		}
 
 		// Фильтр по типу
@@ -142,11 +152,15 @@ func (r *benefitRepository) GetAll(ctx context.Context, limit, offset int, filte
 			args = append(args, *filters.DateTo)
 		}
 
-		// Текстовый поиск по названию и описанию
+		// Текстовый поиск с Full-Text Search
 		if filters.Search != nil && *filters.Search != "" {
-			searchTerm := "%" + *filters.Search + "%"
-			query += ` AND (title LIKE ? OR description LIKE ?)`
-			args = append(args, searchTerm, searchTerm)
+			if filters.SearchMode == "boolean" {
+				query += ` AND MATCH(title, description) AGAINST(? IN BOOLEAN MODE)`
+			} else {
+				// По умолчанию используем NATURAL LANGUAGE MODE
+				query += ` AND MATCH(title, description) AGAINST(? IN NATURAL LANGUAGE MODE)`
+			}
+			args = append(args, *filters.Search)
 		}
 	}
 
@@ -180,6 +194,12 @@ func (r *benefitRepository) Count(ctx context.Context, filters *BenefitFilters) 
 			args = append(args, fmt.Sprintf("%d", *filters.RegionID))
 		}
 
+		// Фильтр по городу
+		if filters.CityID != nil {
+			query += ` AND city_id = UUID_TO_BIN(?)`
+			args = append(args, *filters.CityID)
+		}
+
 		// Фильтр по типу
 		if filters.Type != nil {
 			query += ` AND type = ?`
@@ -209,11 +229,14 @@ func (r *benefitRepository) Count(ctx context.Context, filters *BenefitFilters) 
 			args = append(args, *filters.DateTo)
 		}
 
-		// Текстовый поиск
+		// Текстовый поиск с Full-Text Search
 		if filters.Search != nil && *filters.Search != "" {
-			searchTerm := "%" + *filters.Search + "%"
-			query += ` AND (title LIKE ? OR description LIKE ?)`
-			args = append(args, searchTerm, searchTerm)
+			if filters.SearchMode == "boolean" {
+				query += ` AND MATCH(title, description) AGAINST(? IN BOOLEAN MODE)`
+			} else {
+				query += ` AND MATCH(title, description) AGAINST(? IN NATURAL LANGUAGE MODE)`
+			}
+			args = append(args, *filters.Search)
 		}
 	}
 
@@ -239,13 +262,14 @@ func (r *benefitRepository) Update(ctx context.Context, benefit *domain.Benefit)
 			target_group_ids = ?,
 			longitude = ?,
 			latitude = ?,
+			city_id = uuid_to_bin(?),
 			region = ?,
 			requirment = ?,
 			how_to_use = ?,
 			source_url = ?
 		WHERE id = uuid_to_bin(?)
 	`
-	_, err := r.db.ExecContext(ctx, query, benefit.Title, benefit.Description, benefit.ValidFrom, benefit.ValidTo, benefit.UpdatedAt, benefit.DeletedAt, benefit.Type, benefit.TargetGroupIDs, benefit.Longitude, benefit.Latitude, benefit.Region, benefit.Requirement, benefit.HowToUse, benefit.SourceURL, benefit.ID)
+	_, err := r.db.ExecContext(ctx, query, benefit.Title, benefit.Description, benefit.ValidFrom, benefit.ValidTo, benefit.UpdatedAt, benefit.DeletedAt, benefit.Type, benefit.TargetGroupIDs, benefit.Longitude, benefit.Latitude, benefit.CityID, benefit.Region, benefit.Requirement, benefit.HowToUse, benefit.SourceURL, benefit.ID)
 	if err != nil {
 		return fmt.Errorf("db update benefit: %w", err)
 	}
