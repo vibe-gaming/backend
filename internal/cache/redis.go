@@ -29,7 +29,8 @@ func NewRedis(cfg config.Cache) (redis.UniversalClient, error) {
 func newRedis(cfg config.Cache) (*redis.Client, error) {
 	opts := &redis.Options{
 		Addr:            cfg.Redis.Address,
-		Password:        "",
+		Username:        cfg.Redis.Username,
+		Password:        cfg.Redis.Password,
 		DB:              0,
 		PoolSize:        2000,
 		ConnMaxIdleTime: 170 * time.Second,

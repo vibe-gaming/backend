@@ -78,6 +78,7 @@ type Cache struct {
 	Type  string `env:"REDIS_TYPE" env-required:"true" env-description:"specifies provider, one of redis/redisCluster"`
 	Redis struct {
 		Address  string `env:"REDIS_ADDR" env-default:"" env-description:"redis host:port single instance"`
+		Username string `env:"REDIS_USERNAME" env-default:"" env-description:"redis username if exists"`
 		Password string `env:"REDIS_PASSWORD" env-default:"" env-description:"redis password if exists"`
 		PoolSize int    `env:"REDIS_POOL_SIZE" env-default:"70" env-description:"max tcp connections pool size"`
 	}
