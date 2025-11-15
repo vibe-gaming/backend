@@ -1,13 +1,14 @@
 package limiter
 
 import (
-	"log/slog"
 	"net"
 	"net/http"
 	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/vibe-gaming/backend/pkg/logger"
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 )
 
@@ -74,7 +75,7 @@ func (l *rateLimiter) cleanupVisitors() {
 }
 
 // Limit creates a new rate limiter middleware handler.
-func Limit(rps int, burst int, ttl time.Duration, logger *slog.Logger) gin.HandlerFunc {
+func Limit(rps int, burst int, ttl time.Duration) gin.HandlerFunc {
 	l := newRateLimiter(rps, burst, ttl)
 
 	// run a background worker to clean up old entries
@@ -83,7 +84,7 @@ func Limit(rps int, burst int, ttl time.Duration, logger *slog.Logger) gin.Handl
 	return func(c *gin.Context) {
 		ip, _, err := net.SplitHostPort(c.Request.RemoteAddr)
 		if err != nil {
-			logger.Error("failed to split host port", "error", err)
+			logger.Error("failed to split host port", zap.Error(err))
 			c.AbortWithStatus(http.StatusInternalServerError)
 
 			return

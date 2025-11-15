@@ -17,66 +17,46 @@ import (
 )
 
 type userService struct {
-	userRepository           repository.Users
-	refreshSessionRepository repository.RefreshSession
-	hasher                   hash.PasswordHasher
-	tokenManager             auth.TokenManager
-	otpGenerator             otp.Generator
-	emailService             Emails
-	authConfig               config.AuthConfig
+	userRepository             repository.Users
+	userRegistrationRepository repository.UserRegistration
+	refreshSessionRepository   repository.RefreshSession
+	hasher                     hash.PasswordHasher
+	tokenManager               auth.TokenManager
+	otpGenerator               otp.Generator
+	authConfig                 config.AuthConfig
+	config                     *config.Config
 }
 
 func newUserService(userRepository repository.Users,
+	userRegistrationRepository repository.UserRegistration,
 	refreshSessionRepository repository.RefreshSession,
 	hasher hash.PasswordHasher,
 	tokenManager auth.TokenManager,
 	otpGenerator otp.Generator,
-	emailService Emails,
 	authConfig config.AuthConfig,
+	config *config.Config,
 ) *userService {
 	return &userService{
-		userRepository:           userRepository,
-		refreshSessionRepository: refreshSessionRepository,
-		hasher:                   hasher,
-		tokenManager:             tokenManager,
-		otpGenerator:             otpGenerator,
-		emailService:             emailService,
-		authConfig:               authConfig,
+		userRepository:             userRepository,
+		userRegistrationRepository: userRegistrationRepository,
+		refreshSessionRepository:   refreshSessionRepository,
+		hasher:                     hasher,
+		tokenManager:               tokenManager,
+		otpGenerator:               otpGenerator,
+		authConfig:                 authConfig,
+		config:                     config,
 	}
 }
 
 type UserRegisterInput struct {
+	Phone    string
 	Login    string
 	Email    string
 	Password string
 }
 
 func (s *userService) Register(ctx context.Context, input *UserRegisterInput) error {
-	userUUID, err := uuid.NewV7()
-	if err != nil {
-		return fmt.Errorf("generate uuid v7 failed: %w", err)
-	}
-
-	passwordHash, err := s.hasher.Hash(input.Password)
-	if err != nil {
-		return fmt.Errorf("hasher failed: %w", err)
-	}
-
-	user := domain.User{
-		ID:       userUUID,
-		Login:    input.Login,
-		Password: passwordHash,
-		Email:    input.Email,
-	}
-
-	if err := s.userRepository.Create(ctx, &user); err != nil {
-		if errors.Is(err, domain.ErrDuplicateEntry) {
-			return ErrUserAlreadyExist
-		}
-		return fmt.Errorf("create user failed: %w", err)
-	}
-
-	return nil
+	panic("not implemented")
 }
 
 type UserAuthInput struct {
@@ -149,4 +129,8 @@ func (s *userService) createSession(ctx context.Context, userID *uuid.UUID, user
 	}
 
 	return &res, nil
+}
+
+func (s *userService) Verify(ctx context.Context, id uuid.UUID, code string) (*Tokens, error) {
+	panic("not implemented")
 }

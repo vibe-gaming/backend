@@ -6,57 +6,85 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
+	"github.com/hibiken/asynq"
 	apiHttp "github.com/vibe-gaming/backend/internal/api/http"
+	"github.com/vibe-gaming/backend/internal/cache"
 	"github.com/vibe-gaming/backend/internal/config"
 	"github.com/vibe-gaming/backend/internal/db"
+	"github.com/vibe-gaming/backend/internal/queue/asynqserver"
+	"github.com/vibe-gaming/backend/internal/queue/client"
 	"github.com/vibe-gaming/backend/internal/repository"
 	"github.com/vibe-gaming/backend/internal/server"
 	"github.com/vibe-gaming/backend/internal/service"
+	"github.com/vibe-gaming/backend/internal/worker"
 	"github.com/vibe-gaming/backend/pkg/auth"
 	"github.com/vibe-gaming/backend/pkg/email/smtp"
 	"github.com/vibe-gaming/backend/pkg/hash"
 	logger "github.com/vibe-gaming/backend/pkg/logger"
 	"github.com/vibe-gaming/backend/pkg/otp"
+	"go.uber.org/zap"
 )
 
 func main() {
 	// Init cfg from environment variables
 	cfg := config.MustLoad()
 
-	// Dependencies
-	appLogger := logger.SetupLogger(cfg.Env)
+	// Delete "" from cfg.SMTP.Pass if env is local
+	if cfg.Env == "local" {
+		cfg.SMTP.Pass = strings.ReplaceAll(cfg.SMTP.Pass, "\"", "")
+	}
 
-	appLogger.Info("starting backend api", "env", cfg.Env)
-	appLogger.Debug("debug messages are enabled")
+	// Dependencies
+	logger.Init(cfg.LogLevel)
+
+	logger.Info("logger initialized")
+	logger.Info("starting backend api", zap.String("env", cfg.Env))
+	logger.Debug("debug messages are enabled")
 
 	// Init database
 	dbMySQL, err := db.New(cfg.Database)
 	if err != nil {
-		appLogger.Error("mysql connect problem", "error", err)
+		logger.Error("mysql connect problem", zap.Error(err))
 		os.Exit(1)
 	}
 	defer func() {
 		err = dbMySQL.Close()
 		if err != nil {
-			appLogger.Error("error when closing", "error", err)
+			logger.Error("error when closing", zap.Error(err))
 		}
 	}()
-	appLogger.Info("mysql connection done")
+	logger.Info("mysql connection done")
+
+	// init redis cache
+	redis, err := cache.NewRedis(cfg.Cache)
+	if err != nil {
+		logger.Error("redis init problem", zap.Error(err))
+		os.Exit(1)
+	}
+
+	defer func() {
+		err = redis.Close()
+		if err != nil {
+			logger.Error("error when closing", zap.Error(err))
+		}
+	}()
+	logger.Info("redis connection done")
 
 	hasher := hash.NewSHA1Hasher(cfg.Auth.PasswordSalt)
 
 	emailSender, err := smtp.NewSMTPSender(cfg.SMTP.From, cfg.SMTP.Pass, cfg.SMTP.Host, cfg.SMTP.Port)
 	if err != nil {
-		appLogger.Error("smtp sender creation failed", "error", err)
+		logger.Error("smtp sender creation failed", zap.Error(err))
 		return
 	}
 
 	tokenManager, err := auth.NewManager(cfg.Auth.JWT)
 	if err != nil {
-		appLogger.Error("auth manager creation err", "error", err)
+		logger.Error("auth manager creation err", zap.Error(err))
 		return
 	}
 
@@ -65,24 +93,46 @@ func main() {
 	// Services, Repos & API Handlers
 	repos := repository.NewRepositories(dbMySQL)
 	services := service.NewServices(service.Deps{
-		Logger:       appLogger,
 		Config:       cfg,
 		Hasher:       hasher,
 		TokenManager: tokenManager,
 		OtpGenerator: otpGenerator,
-		EmailSender:  emailSender,
 		Repos:        repos,
 	})
-	handlers := apiHttp.NewHandlers(services, appLogger, tokenManager)
+	workers := worker.NewWorkers(worker.Deps{
+		Redis:         redis,
+		Services:      services,
+		EmailProvider: emailSender,
+		Config:        cfg,
+	})
+	handlers := apiHttp.NewHandlers(services, tokenManager)
 
 	// HTTP Server
 	srv := server.NewServer(cfg, handlers.Init(cfg))
 	go func() {
 		if err := srv.Run(); !errors.Is(err, http.ErrServerClosed) {
-			appLogger.Error("error occurred while running http server", "error", err)
+			logger.Error("error occurred while running http server", zap.Error(err))
 		}
 	}()
-	appLogger.Info("server started")
+	logger.Info("server started")
+
+	// asynq server
+	asynqServer, mux := asynqserver.New(cfg.Cache, workers)
+
+	taskClient := asynq.NewClient(asynqserver.RedisOptions(cfg.Cache))
+	defer func() {
+		if err := taskClient.Close(); err != nil {
+			logger.Error("asynq task client close problem", zap.Error(err))
+		}
+	}()
+	client.SetClient(taskClient)
+
+	if err = asynqServer.Start(mux); err != nil {
+		logger.Fatal("asynq: start worker server failed", zap.Error(err))
+	}
+
+	logger.Info("asynq server started")
+	logger.Info("app started")
 
 	// Graceful Shutdown
 	quit := make(chan os.Signal, 1)
@@ -96,8 +146,8 @@ func main() {
 	defer shutdown()
 
 	if err := srv.Stop(ctx); err != nil {
-		appLogger.Error("failed to stop server", "error", err)
+		logger.Error("failed to stop server", zap.Error(err))
 	}
 
-	appLogger.Info("app stopped")
+	logger.Info("app stopped")
 }

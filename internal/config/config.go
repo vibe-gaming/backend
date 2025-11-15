@@ -9,12 +9,14 @@ import (
 
 type Config struct {
 	Env        string `env:"ENV" env-required:"true"`
+	LogLevel   string `env:"LOG_LEVEL" env-default:"info" env-description:"logging level, debug, info, etc."`
 	HttpServer HttpServer
 	Database   Database
 	Limiter    Limiter
 	Auth       AuthConfig
 	SMTP       SMTPConfig
 	Email      EmailConfig
+	Cache      Cache
 }
 
 type HttpServer struct {
@@ -68,6 +70,20 @@ type EmailConfig struct {
 
 type EmailTemplates struct {
 	Verification string `env:"EMAIL_TEMPLATE_VERIFICATION" env-required:"true"`
+}
+
+type Cache struct {
+	Type  string `env:"REDIS_TYPE" env-required:"true" env-description:"specifies provider, one of redis/redisCluster"`
+	Redis struct {
+		Address  string `env:"REDIS_ADDR" env-default:"" env-description:"redis host:port single instance"`
+		Password string `env:"REDIS_PASSWORD" env-default:"" env-description:"redis password if exists"`
+		PoolSize int    `env:"REDIS_POOL_SIZE" env-default:"70" env-description:"max tcp connections pool size"`
+	}
+	RedisCluster struct {
+		Addresses []string `env:"REDIS_CLUSTER_ADDRS" env-default:"" env-description:"redis cluster nodes: ['172.27.29.90:7000','172.27.29.91:7001'', '172.27.29.92:7002'']"`
+		Password  string   `env:"REDIS_PASSWORD" env-default:"" env-description:"redis password if exists"`
+		PoolSize  int      `env:"REDIS_POOL_SIZE" env-default:"70" env-description:"max tcp connections pool size"`
+	}
 }
 
 func MustLoad() *Config {

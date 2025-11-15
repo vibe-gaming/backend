@@ -2,12 +2,10 @@ package service
 
 import (
 	"context"
-	"log/slog"
 
 	"github.com/vibe-gaming/backend/internal/config"
 	"github.com/vibe-gaming/backend/internal/repository"
 	"github.com/vibe-gaming/backend/pkg/auth"
-	"github.com/vibe-gaming/backend/pkg/email"
 	"github.com/vibe-gaming/backend/pkg/hash"
 	"github.com/vibe-gaming/backend/pkg/otp"
 
@@ -19,32 +17,25 @@ type Services struct {
 }
 
 type Deps struct {
-	Logger       *slog.Logger
 	Config       *config.Config
 	Hasher       hash.PasswordHasher
 	TokenManager auth.TokenManager
 	OtpGenerator otp.Generator
-	EmailSender  email.Sender
 	Repos        *repository.Repositories
 }
 
 func NewServices(deps Deps) *Services {
-	emailService := newEmailsService(deps.EmailSender, deps.Config.Email)
-
 	return &Services{
 		Users: newUserService(deps.Repos.Users,
+			deps.Repos.UserRegistration,
 			deps.Repos.RefreshSession,
 			deps.Hasher,
 			deps.TokenManager,
 			deps.OtpGenerator,
-			emailService,
 			deps.Config.Auth,
+			deps.Config,
 		),
 	}
-}
-
-type Emails interface {
-	SendUserVerificationEmail(input VerificationEmailInput) error
 }
 
 type Users interface {

@@ -1,8 +1,6 @@
 package v1
 
 import (
-	"log/slog"
-
 	"github.com/vibe-gaming/backend/internal/service"
 	"github.com/vibe-gaming/backend/pkg/auth"
 
@@ -25,14 +23,12 @@ import (
 
 type Handler struct {
 	services     *service.Services
-	logger       *slog.Logger
 	tokenManager auth.TokenManager
 }
 
-func NewHandler(services *service.Services, logger *slog.Logger, tokenManager auth.TokenManager) *Handler {
+func NewHandler(services *service.Services, tokenManager auth.TokenManager) *Handler {
 	return &Handler{
 		services:     services,
-		logger:       logger,
 		tokenManager: tokenManager,
 	}
 }

@@ -8,6 +8,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/vibe-gaming/backend/pkg/logger"
+	"go.uber.org/zap"
 )
 
 const (
@@ -19,7 +21,7 @@ func (h *Handler) userIdentityMiddleware(c *gin.Context) {
 	id, err := h.parseAuthHeader(c)
 	if err != nil {
 		if !errors.Is(err, jwt.ErrTokenExpired) {
-			h.logger.Error("parse auth header failed", "error", err)
+			logger.Error("parse auth header failed", zap.Error(err))
 		}
 		c.AbortWithStatus(http.StatusUnauthorized)
 	}

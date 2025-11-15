@@ -5,6 +5,8 @@ import (
 	"net/http"
 
 	"github.com/vibe-gaming/backend/internal/service"
+	"github.com/vibe-gaming/backend/pkg/logger"
+	"go.uber.org/zap"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -55,7 +57,7 @@ func (h *Handler) userRegister(c *gin.Context) {
 			errorResponse(c, UserAlreadyExistsCode)
 			return
 		}
-		h.logger.Error("failed to create user", "error", err)
+		logger.Error("failed to create user", zap.Error(err))
 		c.Status(http.StatusBadRequest)
 		return
 	}
@@ -96,7 +98,7 @@ func (h *Handler) userAuth(c *gin.Context) {
 		IP:        c.ClientIP(),
 	})
 	if err != nil {
-		h.logger.Error("user auth failed", "error", err)
+		logger.Error("user auth failed", zap.Error(err))
 		c.Status(http.StatusBadRequest)
 		return
 	}

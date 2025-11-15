@@ -1,16 +1,16 @@
 package apiHttp
 
 import (
-	"log/slog"
+	"time"
 
-	sloggin "github.com/samber/slog-gin"
-
+	ginzap "github.com/gin-contrib/zap"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
 	_ "github.com/vibe-gaming/backend/docs"
 	"github.com/vibe-gaming/backend/pkg/auth"
 	"github.com/vibe-gaming/backend/pkg/limiter"
+	"github.com/vibe-gaming/backend/pkg/logger"
 	"github.com/vibe-gaming/backend/pkg/validator"
 
 	internalV1 "github.com/vibe-gaming/backend/internal/api/http/internal/v1"
@@ -22,14 +22,12 @@ import (
 
 type Handler struct {
 	services     *service.Services
-	logger       *slog.Logger
 	tokenManager auth.TokenManager
 }
 
-func NewHandlers(services *service.Services, logger *slog.Logger, tokenManager auth.TokenManager) *Handler {
+func NewHandlers(services *service.Services, tokenManager auth.TokenManager) *Handler {
 	return &Handler{
 		services:     services,
-		logger:       logger,
 		tokenManager: tokenManager,
 	}
 }
@@ -41,14 +39,11 @@ func (h *Handler) Init(cfg *config.Config) *gin.Engine {
 	validator.RegisterGinValidator()
 
 	router.Use(
-		gin.Recovery(),
-		sloggin.NewWithConfig(h.logger, sloggin.Config{
-			WithSpanID:  true,
-			WithTraceID: true,
-		}),
-		limiter.Limit(cfg.Limiter.RPS, cfg.Limiter.Burst, cfg.Limiter.TTL, h.logger),
+		ginzap.Ginzap(logger.Logger(), time.RFC3339, true),
+		limiter.Limit(cfg.Limiter.RPS, cfg.Limiter.Burst, cfg.Limiter.TTL),
 		corsMiddleware,
 	)
+	router.Use(ginzap.RecoveryWithZap(logger.Logger(), true))
 
 	if cfg.HttpServer.SwaggerEnabled {
 		router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.NewHandler(), ginSwagger.InstanceName("internal")))
@@ -60,7 +55,7 @@ func (h *Handler) Init(cfg *config.Config) *gin.Engine {
 }
 
 func (h *Handler) initAPI(router *gin.Engine) {
-	internalHandlersV1 := internalV1.NewHandler(h.services, h.logger, h.tokenManager)
+	internalHandlersV1 := internalV1.NewHandler(h.services, h.tokenManager)
 	api := router.Group("/api")
 	internalHandlersV1.Init(api)
 }

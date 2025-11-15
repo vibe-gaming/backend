@@ -12,3 +12,10 @@ services:
       - ./.data/db:/data/db
     env_file:
       - .env
+  redis:
+    image: redis
+    container_name: vibe-gaming-redis
+    restart: always
+    command: redis-server --appendonly no
+    ports:
+      - "6379:6379"
