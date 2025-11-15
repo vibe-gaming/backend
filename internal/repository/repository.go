@@ -12,6 +12,7 @@ import (
 type Repositories struct {
 	Users          Users
 	RefreshSession RefreshSession
+	Benefits       BenefitRepository
 	Cities         Cities
 }
 
@@ -19,6 +20,7 @@ func NewRepositories(db *sqlx.DB) *Repositories {
 	return &Repositories{
 		Users:          newUserRepository(db),
 		RefreshSession: newRefreshSessionRepository(db),
+		Benefits:       NewBenefitRepository(db),
 		Cities:         newCityRepository(db),
 	}
 }

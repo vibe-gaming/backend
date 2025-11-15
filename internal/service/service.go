@@ -15,8 +15,9 @@ import (
 )
 
 type Services struct {
-	Users  Users
-	Cities Cities
+	Users    Users
+	Benefits Benefits
+	Cities   Cities
 }
 
 type Deps struct {
@@ -40,7 +41,8 @@ func NewServices(deps Deps) *Services {
 			deps.Config.Auth,
 			deps.Config,
 		),
-		Cities: newCityService(deps.Repos.Cities),
+		Benefits: newBenefitService(deps.Repos.Benefits),
+		Cities:   newCityService(deps.Repos.Cities),
 	}
 }
 
@@ -53,4 +55,9 @@ type Users interface {
 
 type Cities interface {
 	GetAll(ctx context.Context) ([]domain.City, error)
+}
+
+type Benefits interface {
+	GetAll(ctx context.Context) ([]*domain.Benefit, error)
+	GetByID(ctx context.Context, id string) (*domain.Benefit, error)
 }

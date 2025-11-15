@@ -1,6 +1,8 @@
 module github.com/vibe-gaming/backend
 
-go 1.24
+go 1.23.0
+
+toolchain go1.24.10
 
 require (
 	github.com/gin-contrib/zap v1.1.5
