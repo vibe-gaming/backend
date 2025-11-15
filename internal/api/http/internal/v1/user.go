@@ -93,7 +93,7 @@ func (h *Handler) authLogin(c *gin.Context) {
 	c.Redirect(http.StatusFound, authURL)
 }
 
-const frontendRedirectPath = "frontendUrl/login/callback"
+const frontendRedirectPath = "login/callback"
 
 // @Summary OAuth Callback
 // @Tags Auth
