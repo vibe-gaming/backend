@@ -2,9 +2,9 @@ basePath: /api/v1
 definitions:
   ErrorStruct:
     properties:
-      ErrorCode:
+      error_code:
         type: integer
-      ErrorMessage:
+      error_message:
         type: string
     type: object
   domain.City:
@@ -22,6 +22,26 @@ definitions:
       updated_at:
         type: string
     type: object
+  domain.GroupType:
+    enum:
+    - pensioners
+    - disabled
+    - young_families
+    - low_income
+    - students
+    - large_families
+    - children
+    - veterans
+    type: string
+    x-enum-varnames:
+    - UserGroupPensioners
+    - UserGroupDisabled
+    - UserGroupYoungFamilies
+    - UserGroupLowIncome
+    - UserGroupStudents
+    - UserGroupLargeFamilies
+    - UserGroupChildren
+    - UserGroupVeterans
   v1.benefitResponse:
     properties:
       city_id:
@@ -97,7 +117,7 @@ definitions:
         type: string
       group_type:
         items:
-          type: string
+          $ref: '#/definitions/domain.GroupType'
         type: array
       id:
         type: string
@@ -118,7 +138,7 @@ definitions:
         type: string
       group_type:
         items:
-          type: string
+          $ref: '#/definitions/domain.GroupType'
         type: array
     required:
     - city_id

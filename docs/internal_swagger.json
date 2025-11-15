@@ -410,10 +410,10 @@
         "ErrorStruct": {
             "type": "object",
             "properties": {
-                "ErrorCode": {
+                "error_code": {
                     "type": "integer"
                 },
-                "ErrorMessage": {
+                "error_message": {
                     "type": "string"
                 }
             }
@@ -440,6 +440,29 @@
                     "type": "string"
                 }
             }
+        },
+        "domain.GroupType": {
+            "type": "string",
+            "enum": [
+                "pensioners",
+                "disabled",
+                "young_families",
+                "low_income",
+                "students",
+                "large_families",
+                "children",
+                "veterans"
+            ],
+            "x-enum-varnames": [
+                "UserGroupPensioners",
+                "UserGroupDisabled",
+                "UserGroupYoungFamilies",
+                "UserGroupLowIncome",
+                "UserGroupStudents",
+                "UserGroupLargeFamilies",
+                "UserGroupChildren",
+                "UserGroupVeterans"
+            ]
         },
         "v1.benefitResponse": {
             "type": "object",
@@ -555,7 +578,7 @@
                 "group_type": {
                     "type": "array",
                     "items": {
-                        "type": "string"
+                        "$ref": "#/definitions/domain.GroupType"
                     }
                 },
                 "id": {
@@ -591,7 +614,7 @@
                 "group_type": {
                     "type": "array",
                     "items": {
-                        "type": "string"
+                        "$ref": "#/definitions/domain.GroupType"
                     }
                 }
             }
