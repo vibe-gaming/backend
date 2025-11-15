@@ -28,8 +28,7 @@ type benefitResponse struct {
 	TargetGroups []string `json:"target_groups"`
 	Longitude    *float64 `json:"longitude,omitempty"`
 	Latitude     *float64 `json:"latitude,omitempty"`
-	CityID       *string  `json:"city_id,omitempty"`
-	RegionID     *string  `json:"region_id,omitempty"`
+	Region       []int    `json:"region"`
 	Requirement  string   `json:"requirement"`
 	HowToUse     *string  `json:"how_to_use,omitempty"`
 	SourceURL    string   `json:"source_url"`
@@ -66,16 +65,6 @@ func (h *Handler) getBenefitsList(c *gin.Context) {
 			targetGroups = append(targetGroups, string(tg))
 		}
 
-		var cityID, regionID *string
-		if benefit.CityID != nil {
-			cityIDStr := benefit.CityID.String()
-			cityID = &cityIDStr
-		}
-		if benefit.RegionID != nil {
-			regionIDStr := benefit.RegionID.String()
-			regionID = &regionIDStr
-		}
-
 		response.Benefits = append(response.Benefits, benefitResponse{
 			ID:           benefit.ID.String(),
 			Title:        benefit.Title,
@@ -86,8 +75,7 @@ func (h *Handler) getBenefitsList(c *gin.Context) {
 			TargetGroups: targetGroups,
 			Longitude:    benefit.Longitude,
 			Latitude:     benefit.Latitude,
-			CityID:       cityID,
-			RegionID:     regionID,
+			Region:       benefit.Region,
 			Requirement:  benefit.Requirement,
 			HowToUse:     benefit.HowToUse,
 			SourceURL:    benefit.SourceURL,
@@ -134,16 +122,6 @@ func (h *Handler) getBenefitByID(c *gin.Context) {
 		targetGroups = append(targetGroups, string(tg))
 	}
 
-	var cityID, regionID *string
-	if benefit.CityID != nil {
-		cityIDStr := benefit.CityID.String()
-		cityID = &cityIDStr
-	}
-	if benefit.RegionID != nil {
-		regionIDStr := benefit.RegionID.String()
-		regionID = &regionIDStr
-	}
-
 	response := benefitResponse{
 		ID:           benefit.ID.String(),
 		Title:        benefit.Title,
@@ -154,8 +132,7 @@ func (h *Handler) getBenefitByID(c *gin.Context) {
 		TargetGroups: targetGroups,
 		Longitude:    benefit.Longitude,
 		Latitude:     benefit.Latitude,
-		CityID:       cityID,
-		RegionID:     regionID,
+		Region:       benefit.Region,
 		Requirement:  benefit.Requirement,
 		HowToUse:     benefit.HowToUse,
 		SourceURL:    benefit.SourceURL,

@@ -48,6 +48,32 @@ func (t TargetGroupList) Value() (driver.Value, error) {
 	return json.Marshal(t)
 }
 
+// RegionList - кастомный тип для работы с JSON в БД (массив ID регионов)
+type RegionList []int
+
+// Scan implements sql.Scanner interface
+func (r *RegionList) Scan(value interface{}) error {
+	if value == nil {
+		*r = []int{}
+		return nil
+	}
+
+	bytes, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("failed to scan RegionList: expected []byte, got %T", value)
+	}
+
+	return json.Unmarshal(bytes, r)
+}
+
+// Value implements driver.Valuer interface
+func (r RegionList) Value() (driver.Value, error) {
+	if r == nil {
+		return nil, nil
+	}
+	return json.Marshal(r)
+}
+
 type Benefit struct {
 	ID          uuid.UUID  `db:"id"`
 	Title       string     `db:"title"`
@@ -64,8 +90,7 @@ type Benefit struct {
 	Longitude *float64 `db:"longitude"` // nullable
 	Latitude  *float64 `db:"latitude"`  // nullable
 
-	CityID   *uuid.UUID `db:"city_id"`   // nullable
-	RegionID *uuid.UUID `db:"region_id"` // nullable
+	Region RegionList `db:"region"` // stored as JSON array of region IDs
 
 	Requirement string  `db:"requirment"` // notice spelling to match table
 	HowToUse    *string `db:"how_to_use"` // nullable

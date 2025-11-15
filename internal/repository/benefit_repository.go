@@ -29,10 +29,10 @@ func NewBenefitRepository(db *sqlx.DB) BenefitRepository {
 
 func (r *benefitRepository) Create(ctx context.Context, benefit *domain.Benefit) error {
 	const query = `
-	INSERT INTO benefit (id, title, description, valid_from, valid_to, created_at, updated_at, deleted_at, type, target_group_ids, longitude, latitude, city_id, region_id, requirement, how_to_use, source_url)
-	VALUES (uuid_to_bin(?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+	INSERT INTO benefit (id, title, description, valid_from, valid_to, created_at, updated_at, deleted_at, type, target_group_ids, longitude, latitude, region, requirment, how_to_use, source_url)
+	VALUES (uuid_to_bin(?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 	`
-	_, err := r.db.ExecContext(ctx, query, benefit.ID, benefit.Title, benefit.Description, benefit.ValidFrom, benefit.ValidTo, benefit.CreatedAt, benefit.UpdatedAt, benefit.DeletedAt, benefit.Type, benefit.TargetGroupIDs, benefit.Longitude, benefit.Latitude, benefit.CityID, benefit.RegionID, benefit.Requirement, benefit.HowToUse, benefit.SourceURL)
+	_, err := r.db.ExecContext(ctx, query, benefit.ID, benefit.Title, benefit.Description, benefit.ValidFrom, benefit.ValidTo, benefit.CreatedAt, benefit.UpdatedAt, benefit.DeletedAt, benefit.Type, benefit.TargetGroupIDs, benefit.Longitude, benefit.Latitude, benefit.Region, benefit.Requirement, benefit.HowToUse, benefit.SourceURL)
 	if err != nil {
 		return fmt.Errorf("db insert benefit: %w", err)
 	}
@@ -53,8 +53,7 @@ func (r *benefitRepository) GetByID(ctx context.Context, id string) (*domain.Ben
 			target_group_ids,
 			longitude,
 			latitude,
-			bin_to_uuid(city_id) as city_id,
-			bin_to_uuid(region_id) as region_id,
+			region,
 			requirment,
 			how_to_use,
 			source_url
@@ -87,8 +86,7 @@ func (r *benefitRepository) GetAll(ctx context.Context) ([]*domain.Benefit, erro
 			target_group_ids,
 			longitude,
 			latitude,
-			bin_to_uuid(city_id) as city_id,
-			bin_to_uuid(region_id) as region_id,
+			region,
 			requirment,
 			how_to_use,
 			source_url
@@ -117,14 +115,13 @@ func (r *benefitRepository) Update(ctx context.Context, benefit *domain.Benefit)
 			target_group_ids = ?,
 			longitude = ?,
 			latitude = ?,
-			city_id = uuid_to_bin(?),
-			region_id = uuid_to_bin(?),
+			region = ?,
 			requirment = ?,
 			how_to_use = ?,
 			source_url = ?
 		WHERE id = uuid_to_bin(?)
 	`
-	_, err := r.db.ExecContext(ctx, query, benefit.Title, benefit.Description, benefit.ValidFrom, benefit.ValidTo, benefit.UpdatedAt, benefit.DeletedAt, benefit.Type, benefit.TargetGroupIDs, benefit.Longitude, benefit.Latitude, benefit.CityID, benefit.RegionID, benefit.Requirement, benefit.HowToUse, benefit.SourceURL, benefit.ID)
+	_, err := r.db.ExecContext(ctx, query, benefit.Title, benefit.Description, benefit.ValidFrom, benefit.ValidTo, benefit.UpdatedAt, benefit.DeletedAt, benefit.Type, benefit.TargetGroupIDs, benefit.Longitude, benefit.Latitude, benefit.Region, benefit.Requirement, benefit.HowToUse, benefit.SourceURL, benefit.ID)
 	if err != nil {
 		return fmt.Errorf("db update benefit: %w", err)
 	}
