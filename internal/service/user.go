@@ -21,6 +21,7 @@ import (
 type userService struct {
 	userRepository           repository.Users
 	refreshSessionRepository repository.RefreshSession
+	cityRepository           repository.Cities
 	hasher                   hash.PasswordHasher
 	tokenManager             auth.TokenManager
 	otpGenerator             otp.Generator
@@ -31,6 +32,7 @@ type userService struct {
 
 func newUserService(userRepository repository.Users,
 	refreshSessionRepository repository.RefreshSession,
+	cityRepository repository.Cities,
 	hasher hash.PasswordHasher,
 	tokenManager auth.TokenManager,
 	otpGenerator otp.Generator,
@@ -41,6 +43,7 @@ func newUserService(userRepository repository.Users,
 	return &userService{
 		userRepository:           userRepository,
 		refreshSessionRepository: refreshSessionRepository,
+		cityRepository:           cityRepository,
 		hasher:                   hasher,
 		tokenManager:             tokenManager,
 		otpGenerator:             otpGenerator,
@@ -169,4 +172,19 @@ func (s *userService) Auth(ctx context.Context, code string, userAgent string, u
 	}
 
 	return tokens, nil
+}
+
+func (s *userService) GetOneByID(ctx context.Context, id uuid.UUID) (*domain.User, error) {
+	return s.userRepository.GetOneByID(ctx, id)
+}
+
+func (s *userService) UpdateUserInfo(ctx context.Context, userID uuid.UUID, cityID uuid.UUID, groupType domain.GroupTypeList) error {
+	if _, err := s.cityRepository.GetOneByID(ctx, cityID); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return ErrCityNotFound
+		}
+		return fmt.Errorf("get city by id failed: %w", err)
+	}
+
+	return s.userRepository.CompleteRegistration(ctx, userID, cityID, groupType)
 }

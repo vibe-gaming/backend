@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/vibe-gaming/backend/pkg/logger"
 	"go.uber.org/zap"
 )
@@ -46,4 +47,13 @@ func (h *Handler) parseAuthHeader(c *gin.Context) (string, error) {
 	}
 
 	return h.tokenManager.Parse(headerParts[1])
+}
+
+func (h *Handler) getUserUUID(c *gin.Context) (uuid.UUID, error) {
+	id, ok := c.Get(userCtx)
+	if !ok {
+		return uuid.Nil, errors.New("user id not found")
+	}
+
+	return uuid.MustParse(id.(string)), nil
 }

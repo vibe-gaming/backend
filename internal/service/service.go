@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/vibe-gaming/backend/internal/config"
+	"github.com/vibe-gaming/backend/internal/domain"
 	"github.com/vibe-gaming/backend/internal/esia"
 	"github.com/vibe-gaming/backend/internal/repository"
 	"github.com/vibe-gaming/backend/pkg/auth"
@@ -14,7 +15,8 @@ import (
 )
 
 type Services struct {
-	Users Users
+	Users  Users
+	Cities Cities
 }
 
 type Deps struct {
@@ -30,6 +32,7 @@ func NewServices(deps Deps) *Services {
 	return &Services{
 		Users: newUserService(deps.Repos.Users,
 			deps.Repos.RefreshSession,
+			deps.Repos.Cities,
 			deps.Hasher,
 			deps.TokenManager,
 			deps.OtpGenerator,
@@ -37,10 +40,17 @@ func NewServices(deps Deps) *Services {
 			deps.Config.Auth,
 			deps.Config,
 		),
+		Cities: newCityService(deps.Repos.Cities),
 	}
 }
 
 type Users interface {
 	Auth(ctx context.Context, code string, userAgent string, userIP string) (*Tokens, error)
 	createSession(ctx context.Context, userID *uuid.UUID, userAgent *string, userIP *string) (*Tokens, error)
+	GetOneByID(ctx context.Context, id uuid.UUID) (*domain.User, error)
+	UpdateUserInfo(ctx context.Context, userID uuid.UUID, cityID uuid.UUID, groupType domain.GroupTypeList) error
+}
+
+type Cities interface {
+	GetAll(ctx context.Context) ([]domain.City, error)
 }
