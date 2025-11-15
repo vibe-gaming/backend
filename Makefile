@@ -65,6 +65,11 @@ migration-down:
 	$(LOCAL_BIN)/goose -dir ${LOCAL_MIGRATION_DIR} mysql ${LOCAL_MIGRATION_DSN} down -v
 
 migration-create:
+	 @echo "Migration name:"
+	 @read migration_name; \
+	 $(LOCAL_BIN)/goose -dir $(LOCAL_MIGRATION_DIR) create $$migration_name sql
+
+migration-create:
 	@echo "Migration name:"
 	@read migration_name; \
 	$(LOCAL_BIN)/goose -dir $(LOCAL_MIGRATION_DIR) create $$migration_name sql

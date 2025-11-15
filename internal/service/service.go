@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/vibe-gaming/backend/internal/config"
+	"github.com/vibe-gaming/backend/internal/domain"
 	"github.com/vibe-gaming/backend/internal/esia"
 	"github.com/vibe-gaming/backend/internal/repository"
 	"github.com/vibe-gaming/backend/pkg/auth"
@@ -14,7 +15,8 @@ import (
 )
 
 type Services struct {
-	Users Users
+	Users    Users
+	Benefits Benefits
 }
 
 type Deps struct {
@@ -37,10 +39,16 @@ func NewServices(deps Deps) *Services {
 			deps.Config.Auth,
 			deps.Config,
 		),
+		Benefits: newBenefitService(deps.Repos.Benefits),
 	}
 }
 
 type Users interface {
 	Auth(ctx context.Context, code string, userAgent string, userIP string) (*Tokens, error)
 	createSession(ctx context.Context, userID *uuid.UUID, userAgent *string, userIP *string) (*Tokens, error)
+}
+
+type Benefits interface {
+	GetAll(ctx context.Context) ([]*domain.Benefit, error)
+	GetByID(ctx context.Context, id string) (*domain.Benefit, error)
 }
