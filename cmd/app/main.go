@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -32,8 +31,6 @@ import (
 )
 
 func main() {
-	fmt.Println(os.Getenv("AUTH_PASSWORD_SALT"))
-
 	// Init cfg from environment variables
 	cfg := config.MustLoad()
 
