@@ -26,9 +26,16 @@ func New(cfg config.Cache, workers *worker.Workers) (*asynq.Server, *asynq.Serve
 func RedisOptions(cfg config.Cache) asynq.RedisConnOpt {
 	var opts asynq.RedisConnOpt
 	if cfg.Type == cache.RedisTypeCluster {
-		opts = asynq.RedisClusterClientOpt{Addrs: cfg.RedisCluster.Addresses}
+		opts = asynq.RedisClusterClientOpt{
+			Addrs:    cfg.RedisCluster.Addresses,
+			Password: cfg.RedisCluster.Password,
+		}
 	} else {
-		opts = asynq.RedisClientOpt{Addr: cfg.Redis.Address}
+		opts = asynq.RedisClientOpt{
+			Addr:     cfg.Redis.Address,
+			Username: cfg.Redis.Username,
+			Password: cfg.Redis.Password,
+		}
 	}
 	return opts
 }
