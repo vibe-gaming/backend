@@ -83,7 +83,11 @@ definitions:
     - VerificationStatusExpired
   v1.benefitResponse:
     properties:
+      category:
+        type: string
       city_id:
+        type: string
+      created_at:
         type: string
       description:
         type: string
@@ -103,6 +107,10 @@ definitions:
         type: string
       source_url:
         type: string
+      tags:
+        items:
+          type: string
+        type: array
       target_groups:
         items:
           type: string
@@ -111,10 +119,14 @@ definitions:
         type: string
       type:
         type: string
+      updated_at:
+        type: string
       valid_from:
         type: string
       valid_to:
         type: string
+      views:
+        type: integer
     type: object
   v1.benefitsListResponse:
     properties:
@@ -227,10 +239,20 @@ paths:
         in: query
         name: type
         type: string
-      - description: Целевые группы через запятой (pensioners, disabled, students
+      - description: Целевые группы через запятую (pensioners, disabled, students
           и т.д.)
         in: query
         name: target_groups
+        type: string
+      - description: Теги через запятую (most_popular, new, hot, best, recommended,
+          popular, top)
+        in: query
+        name: tags
+        type: string
+      - description: Категории через запятую (medicine, transport, food, clothing,
+          other)
+        in: query
+        name: categories
         type: string
       - description: Дата начала периода (YYYY-MM-DD)
         in: query

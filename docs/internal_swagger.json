@@ -54,8 +54,20 @@
                     },
                     {
                         "type": "string",
-                        "description": "Целевые группы через запятой (pensioners, disabled, students и т.д.)",
+                        "description": "Целевые группы через запятую (pensioners, disabled, students и т.д.)",
                         "name": "target_groups",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Теги через запятую (most_popular, new, hot, best, recommended, popular, top)",
+                        "name": "tags",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Категории через запятую (medicine, transport, food, clothing, other)",
+                        "name": "categories",
                         "in": "query"
                     },
                     {
@@ -519,7 +531,13 @@
         "v1.benefitResponse": {
             "type": "object",
             "properties": {
+                "category": {
+                    "type": "string"
+                },
                 "city_id": {
+                    "type": "string"
+                },
+                "created_at": {
                     "type": "string"
                 },
                 "description": {
@@ -549,6 +567,12 @@
                 "source_url": {
                     "type": "string"
                 },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "target_groups": {
                     "type": "array",
                     "items": {
@@ -561,11 +585,17 @@
                 "type": {
                     "type": "string"
                 },
+                "updated_at": {
+                    "type": "string"
+                },
                 "valid_from": {
                     "type": "string"
                 },
                 "valid_to": {
                     "type": "string"
+                },
+                "views": {
+                    "type": "integer"
                 }
             }
         },
