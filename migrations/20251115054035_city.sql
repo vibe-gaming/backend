@@ -27,11 +27,9 @@ CREATE TABLE city (
 
 ALTER TABLE user ADD COLUMN city_id BINARY(16) DEFAULT NULL COMMENT 'ID города';
 
--- Вставка региона Республика Саха (Якутия)
-INSERT INTO region (id, name) VALUES (uuid_to_bin('019a8614-33dd-7dba-b813-bd1d37c0ff0f'), 'Республика Саха (Якутия)');
+INSERT INTO region (id, name) VALUES (UUID_TO_BIN("d425ddef-9602-4e17-8f93-00e51c22bd5d"),"Республика Саха (Якутия)");
 
--- Вставка города Якутск
-INSERT INTO city (id, region_id, name) VALUES (uuid_to_bin('019a8614-6970-77b1-ba23-768f104e3124'), uuid_to_bin('019a8614-33dd-7dba-b813-bd1d37c0ff0f'), 'Якутск');
+INSERT INTO city (id, name, region_id) VALUES (UUID_TO_BIN("0c0f5d68-31e3-469e-8b30-b55702659254"),"Якутск", UUID_TO_BIN("d425ddef-9602-4e17-8f93-00e51c22bd5d"));
 
 -- +goose Down
 -- +goose StatementBegin
