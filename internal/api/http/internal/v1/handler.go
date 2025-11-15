@@ -2,6 +2,7 @@ package v1
 
 import (
 	"github.com/vibe-gaming/backend/internal/config"
+	"github.com/vibe-gaming/backend/internal/esia"
 	"github.com/vibe-gaming/backend/internal/service"
 	"github.com/vibe-gaming/backend/pkg/auth"
 
@@ -26,13 +27,20 @@ type Handler struct {
 	services     *service.Services
 	tokenManager auth.TokenManager
 	config       *config.Config
+	esiaClient   *esia.Client
 }
 
-func NewHandler(services *service.Services, tokenManager auth.TokenManager, config *config.Config) *Handler {
+func NewHandler(
+	services *service.Services,
+	tokenManager auth.TokenManager,
+	config *config.Config,
+	esiaClient *esia.Client,
+) *Handler {
 	return &Handler{
 		services:     services,
 		tokenManager: tokenManager,
 		config:       config,
+		esiaClient:   esiaClient,
 	}
 }
 

@@ -5,7 +5,6 @@ import (
 
 	"github.com/vibe-gaming/backend/internal/domain"
 
-	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -22,10 +21,8 @@ func NewRepositories(db *sqlx.DB) *Repositories {
 }
 
 type Users interface {
+	GetByExternalID(ctx context.Context, esiaOID string) (*domain.User, error)
 	Create(ctx context.Context, user *domain.User) error
-	GetByCredentials(ctx context.Context, email string, password string) (*uuid.UUID, error)
-	GetByESIAOID(ctx context.Context, esiaOID string) (*domain.User, error)
-	CreateESIAUser(ctx context.Context, user *domain.User) error
 }
 
 type RefreshSession interface {

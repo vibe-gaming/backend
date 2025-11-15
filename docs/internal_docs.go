@@ -15,9 +15,9 @@ const docTemplateinternal = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/users/auth": {
-            "post": {
-                "description": "Аутентификация пользователей",
+        "/users/auth/callback": {
+            "get": {
+                "description": "Callback endpoint для Auth",
                 "consumes": [
                     "application/json"
                 ],
@@ -25,18 +25,23 @@ const docTemplateinternal = `{
                     "application/json"
                 ],
                 "tags": [
-                    "User Auth"
+                    "Auth"
                 ],
-                "summary": "Аутентификация",
+                "summary": "OAuth Callback",
                 "parameters": [
                     {
-                        "description": "Аутентификация",
-                        "name": "input",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/v1.userAuthRequest"
-                        }
+                        "type": "string",
+                        "description": "Authorization code",
+                        "name": "code",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "State parameter",
+                        "name": "state",
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -51,6 +56,26 @@ const docTemplateinternal = `{
                         "schema": {
                             "$ref": "#/definitions/ErrorStruct"
                         }
+                    }
+                }
+            }
+        },
+        "/users/auth/login": {
+            "get": {
+                "description": "Перенаправление на ESIA для авторизации",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "OAuth Login",
+                "responses": {
+                    "302": {
+                        "description": "Found"
                     }
                 }
             }
@@ -88,46 +113,6 @@ const docTemplateinternal = `{
                     }
                 }
             }
-        },
-        "/users/register": {
-            "post": {
-                "description": "Создание аккаунта юзера",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "User Auth"
-                ],
-                "summary": "Регистрация",
-                "parameters": [
-                    {
-                        "description": "Регистрация",
-                        "name": "input",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/v1.userRegisterRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created"
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/ErrorStruct"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
-            }
         }
     },
     "definitions": {
@@ -142,26 +127,6 @@ const docTemplateinternal = `{
                 }
             }
         },
-        "v1.userAuthRequest": {
-            "type": "object",
-            "required": [
-                "email",
-                "password"
-            ],
-            "properties": {
-                "email": {
-                    "type": "string",
-                    "maxLength": 64,
-                    "example": "mail@mail.com"
-                },
-                "password": {
-                    "type": "string",
-                    "maxLength": 64,
-                    "minLength": 8,
-                    "example": "notasecretpassword"
-                }
-            }
-        },
         "v1.userAuthResponse": {
             "type": "object",
             "properties": {
@@ -170,33 +135,6 @@ const docTemplateinternal = `{
                 },
                 "refresh_token": {
                     "type": "string"
-                }
-            }
-        },
-        "v1.userRegisterRequest": {
-            "type": "object",
-            "required": [
-                "email",
-                "name",
-                "password"
-            ],
-            "properties": {
-                "email": {
-                    "type": "string",
-                    "maxLength": 64,
-                    "example": "mail@mail.com"
-                },
-                "name": {
-                    "type": "string",
-                    "maxLength": 64,
-                    "minLength": 2,
-                    "example": "wazzup"
-                },
-                "password": {
-                    "type": "string",
-                    "maxLength": 64,
-                    "minLength": 8,
-                    "example": "notasecretpassword"
                 }
             }
         }

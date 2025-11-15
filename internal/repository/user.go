@@ -10,7 +10,6 @@ import (
 	"github.com/vibe-gaming/backend/internal/domain"
 
 	"github.com/go-sql-driver/mysql"
-	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -24,52 +23,12 @@ func newUserRepository(db *sqlx.DB) *userRepository {
 	}
 }
 
-func (r *userRepository) Create(ctx context.Context, user *domain.User) error {
+func (r *userRepository) GetByExternalID(ctx context.Context, externalID string) (*domain.User, error) {
 	const query = `
-				INSERT INTO user (id, login, password, email) 
-				VALUES(uuid_to_bin(?), ?, ?, ?);
-				`
-
-	_, err := r.db.ExecContext(ctx, query, user.ID, user.Login, user.Password, user.Email)
-
-	if err != nil {
-		//nolint:errorlint
-		if mysqlError, ok := err.(*mysql.MySQLError); ok && mysqlError.Number == db.DuplicateEntry {
-			return domain.ErrDuplicateEntry
-		}
-		return fmt.Errorf("db insert user: %w", err)
-	}
-
-	return nil
-}
-
-func (r *userRepository) GetByCredentials(ctx context.Context, email string, password string) (*uuid.UUID, error) {
-	const query = `
-				SELECT id FROM user
-				WHERE email = ?
-				AND password = ?
-				`
-	var ID uuid.UUID
-	if err := r.db.GetContext(ctx, &ID, query, email, password); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, domain.ErrNotFound
-		}
-		return nil, fmt.Errorf("select from user failed: %w", err)
-	}
-
-	return &ID, nil
-}
-
-func (r *userRepository) GetByESIAOID(ctx context.Context, esiaOID string) (*domain.User, error) {
-	const query = `
-				SELECT id, login, password, email, esia_oid, esia_first_name, esia_last_name, 
-				       esia_middle_name, esia_snils, esia_email, esia_mobile,
-				       created_at, updated_at, deleted_at
-				FROM user
-				WHERE esia_oid = ?
-				`
+	SELECT id, external_id, first_name, last_name, middle_name, snils, email, phone_number, created_at, updated_at, deleted_at FROM user WHERE external_id = ?;
+	`
 	var user domain.User
-	if err := r.db.GetContext(ctx, &user, query, esiaOID); err != nil {
+	if err := r.db.GetContext(ctx, &user, query, externalID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, domain.ErrNotFound
 		}
@@ -79,24 +38,22 @@ func (r *userRepository) GetByESIAOID(ctx context.Context, esiaOID string) (*dom
 	return &user, nil
 }
 
-func (r *userRepository) CreateESIAUser(ctx context.Context, user *domain.User) error {
+func (r *userRepository) Create(ctx context.Context, user *domain.User) error {
 	const query = `
-				INSERT INTO user (id, login, email, esia_oid, esia_first_name, esia_last_name, 
-				                 esia_middle_name, esia_snils, esia_email, esia_mobile) 
-				VALUES(uuid_to_bin(?), ?, ?, ?, ?, ?, ?, ?, ?, ?);
-				`
+	INSERT INTO user
+	(id, external_id, first_name, last_name, middle_name, snils, email, phone_number)
+	VALUES(uuid_to_bin(?), ?, ?, ?, ?, ?, ?, ?);
+	`
 
-	_, err := r.db.ExecContext(ctx, query,
+	result, err := r.db.ExecContext(ctx, query,
 		user.ID,
-		user.Login,
-		user.Email,
-		user.ESIAOID,
-		user.ESIAFirstName,
-		user.ESIALastName,
-		user.ESIAMiddleName,
-		user.ESIASNILS,
-		user.ESIAEmail,
-		user.ESIAMobile,
+		user.ExternalID,
+		user.FirstName.String,
+		user.LastName.String,
+		user.MiddleName.String,
+		user.SNILS.String,
+		user.Email.String,
+		user.PhoneNumber.String,
 	)
 
 	if err != nil {
@@ -105,6 +62,15 @@ func (r *userRepository) CreateESIAUser(ctx context.Context, user *domain.User) 
 			return domain.ErrDuplicateEntry
 		}
 		return fmt.Errorf("db insert esia user: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected failed: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return domain.ErrNoRowsAffected
 	}
 
 	return nil

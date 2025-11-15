@@ -91,6 +91,8 @@ func main() {
 
 	otpGenerator := otp.NewGOTPGenerator()
 
+	esiaClient := esia.NewClient(cfg.ESIA)
+
 	// Services, Repos & API Handlers
 	repos := repository.NewRepositories(dbMySQL)
 	services := service.NewServices(service.Deps{
@@ -99,6 +101,7 @@ func main() {
 		TokenManager: tokenManager,
 		OtpGenerator: otpGenerator,
 		Repos:        repos,
+		EsiaClient:   esiaClient,
 	})
 	workers := worker.NewWorkers(worker.Deps{
 		Redis:         redis,
@@ -106,7 +109,7 @@ func main() {
 		EmailProvider: emailSender,
 		Config:        cfg,
 	})
-	handlers := apiHttp.NewHandlers(services, tokenManager, cfg)
+	handlers := apiHttp.NewHandlers(services, tokenManager, cfg, esiaClient)
 
 	// HTTP Server
 	srv := server.NewServer(cfg, handlers.Init(cfg))

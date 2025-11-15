@@ -24,6 +24,7 @@ type userService struct {
 	hasher                   hash.PasswordHasher
 	tokenManager             auth.TokenManager
 	otpGenerator             otp.Generator
+	esiaClient               *esia.Client
 	authConfig               config.AuthConfig
 	config                   *config.Config
 }
@@ -33,6 +34,7 @@ func newUserService(userRepository repository.Users,
 	hasher hash.PasswordHasher,
 	tokenManager auth.TokenManager,
 	otpGenerator otp.Generator,
+	esiaClient *esia.Client,
 	authConfig config.AuthConfig,
 	config *config.Config,
 ) *userService {
@@ -42,6 +44,7 @@ func newUserService(userRepository repository.Users,
 		hasher:                   hasher,
 		tokenManager:             tokenManager,
 		otpGenerator:             otpGenerator,
+		esiaClient:               esiaClient,
 		authConfig:               authConfig,
 		config:                   config,
 	}
@@ -90,29 +93,22 @@ func (s *userService) createSession(ctx context.Context, userID *uuid.UUID, user
 	return &res, nil
 }
 
-func (s *userService) Verify(ctx context.Context, id uuid.UUID, code string) (*Tokens, error) {
-	panic("not implemented")
-}
-
-// AuthESIA выполняет авторизацию пользователя через ESIA OAuth
-func (s *userService) AuthESIA(ctx context.Context, code string, userAgent string, userIP string) (*Tokens, error) {
-	// Создаем ESIA клиент
-	esiaClient := esia.NewClient(s.config.ESIA)
-
+// Auth выполняет авторизацию пользователя через ESIA OAuth
+func (s *userService) Auth(ctx context.Context, code string, userAgent string, userIP string) (*Tokens, error) {
 	// Обменять код на токен
-	tokenResp, err := esiaClient.ExchangeCodeForToken(code)
+	tokenResp, err := s.esiaClient.ExchangeCodeForToken(code)
 	if err != nil {
 		return nil, fmt.Errorf("exchange code for token failed: %w", err)
 	}
 
 	// Получить информацию о пользователе
-	userInfo, err := esiaClient.GetUserInfo(tokenResp.AccessToken)
+	userInfo, err := s.esiaClient.GetUserInfo(tokenResp.AccessToken)
 	if err != nil {
 		return nil, fmt.Errorf("get user info failed: %w", err)
 	}
 
 	// Проверить, существует ли пользователь с таким ESIA OID
-	existingUser, err := s.userRepository.GetByESIAOID(ctx, userInfo.OID)
+	existingUser, err := s.userRepository.GetByExternalID(ctx, userInfo.OID)
 	if err != nil && !errors.Is(err, domain.ErrNotFound) {
 		return nil, fmt.Errorf("get user by esia oid failed: %w", err)
 	}
@@ -126,48 +122,40 @@ func (s *userService) AuthESIA(ctx context.Context, code string, userAgent strin
 			return nil, fmt.Errorf("generate user id failed: %w", err)
 		}
 
-		// Формируем логин из имени и фамилии
-		login := fmt.Sprintf("%s_%s", userInfo.FirstName, userInfo.LastName)
-
 		newUser := &domain.User{
-			ID:    userID,
-			Login: login,
-			ESIAOID: sql.NullString{
+			ID: userID,
+			ExternalID: sql.NullString{
 				String: userInfo.OID,
 				Valid:  true,
 			},
-			ESIAFirstName: sql.NullString{
+			FirstName: sql.NullString{
 				String: userInfo.FirstName,
 				Valid:  userInfo.FirstName != "",
 			},
-			ESIALastName: sql.NullString{
+			LastName: sql.NullString{
 				String: userInfo.LastName,
 				Valid:  userInfo.LastName != "",
 			},
-			ESIAMiddleName: sql.NullString{
+			MiddleName: sql.NullString{
 				String: userInfo.MiddleName,
 				Valid:  userInfo.MiddleName != "",
 			},
-			ESIASNILS: sql.NullString{
+			SNILS: sql.NullString{
 				String: userInfo.SNILS,
 				Valid:  userInfo.SNILS != "",
 			},
-			ESIAEmail: sql.NullString{
+			Email: sql.NullString{
 				String: userInfo.Email,
 				Valid:  userInfo.Email != "",
 			},
-			ESIAMobile: sql.NullString{
+			PhoneNumber: sql.NullString{
 				String: userInfo.Mobile,
 				Valid:  userInfo.Mobile != "",
 			},
 		}
 
-		if userInfo.Email != "" {
-			newUser.Email = userInfo.Email
-		}
-
-		if err := s.userRepository.CreateESIAUser(ctx, newUser); err != nil {
-			return nil, fmt.Errorf("create esia user failed: %w", err)
+		if err := s.userRepository.Create(ctx, newUser); err != nil {
+			return nil, fmt.Errorf("create user failed: %w", err)
 		}
 	} else {
 		// Пользователь уже существует

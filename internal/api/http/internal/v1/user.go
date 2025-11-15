@@ -18,10 +18,9 @@ func (h *Handler) initUsersRoutes(api *gin.RouterGroup) {
 
 	users.GET("/pong", h.userIdentityMiddleware, h.pong)
 
-	// ESIA OAuth routes
-	auth := api.Group("/auth")
-	auth.GET("/esia/login", h.esiaLogin)
-	auth.GET("/esia/callback", h.esiaCallback)
+	// auth routes
+	users.GET("/auth/login", h.authLogin)
+	users.GET("/auth/callback", h.authCallback)
 }
 
 // @Summary Pong
@@ -47,15 +46,15 @@ type userAuthResponse struct {
 // Хранилище для CSRF state токенов (в продакшене использовать Redis)
 var stateStore = make(map[string]bool)
 
-// @Summary ESIA OAuth Login
-// @Tags ESIA Auth
+// @Summary OAuth Login
+// @Tags Auth
 // @Description Перенаправление на ESIA для авторизации
-// @ModuleID esiaLogin
+// @ModuleID login
 // @Accept  json
 // @Produce  json
 // @Success 302
-// @Router /auth/esia/login [get]
-func (h *Handler) esiaLogin(c *gin.Context) {
+// @Router /users/auth/login [get]
+func (h *Handler) authLogin(c *gin.Context) {
 	// Генерируем state для защиты от CSRF
 	state := generateState()
 	stateStore[state] = true
@@ -75,18 +74,18 @@ func (h *Handler) esiaLogin(c *gin.Context) {
 	c.Redirect(http.StatusFound, authURL)
 }
 
-// @Summary ESIA OAuth Callback
-// @Tags ESIA Auth
-// @Description Callback endpoint для ESIA OAuth
-// @ModuleID esiaCallback
+// @Summary OAuth Callback
+// @Tags Auth
+// @Description Callback endpoint для Auth
+// @ModuleID callback
 // @Accept  json
 // @Produce  json
 // @Param code query string true "Authorization code"
 // @Param state query string true "State parameter"
 // @Success 200 {object} userAuthResponse
 // @Failure 400 {object} ErrorStruct
-// @Router /auth/esia/callback [get]
-func (h *Handler) esiaCallback(c *gin.Context) {
+// @Router /users/auth/callback [get]
+func (h *Handler) authCallback(c *gin.Context) {
 	code := c.Query("code")
 	state := c.Query("state")
 
@@ -118,7 +117,7 @@ func (h *Handler) esiaCallback(c *gin.Context) {
 	logger.Info("ESIA callback received", zap.String("code", code[:10]+"..."))
 
 	// Выполняем авторизацию через сервис
-	result, err := h.services.Users.AuthESIA(c.Request.Context(), code, c.Request.UserAgent(), c.ClientIP())
+	result, err := h.services.Users.Auth(c.Request.Context(), code, c.Request.UserAgent(), c.ClientIP())
 	if err != nil {
 		logger.Error("esia auth failed", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "authorization failed"})

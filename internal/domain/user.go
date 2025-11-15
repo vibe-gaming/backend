@@ -8,19 +8,14 @@ import (
 )
 
 type User struct {
-	ID       uuid.UUID `db:"id"`
-	Login    string    `db:"login"`
-	Password string    `db:"password"`
-	Email    string    `db:"email"`
-
-	// ESIA OAuth fields
-	ESIAOID        sql.NullString `db:"esia_oid"`
-	ESIAFirstName  sql.NullString `db:"esia_first_name"`
-	ESIALastName   sql.NullString `db:"esia_last_name"`
-	ESIAMiddleName sql.NullString `db:"esia_middle_name"`
-	ESIASNILS      sql.NullString `db:"esia_snils"`
-	ESIAEmail      sql.NullString `db:"esia_email"`
-	ESIAMobile     sql.NullString `db:"esia_mobile"`
+	ID          uuid.UUID      `db:"id"`
+	ExternalID  sql.NullString `db:"external_id"`
+	FirstName   sql.NullString `db:"first_name"`
+	LastName    sql.NullString `db:"last_name"`
+	MiddleName  sql.NullString `db:"middle_name"`
+	SNILS       sql.NullString `db:"snils"`
+	Email       sql.NullString `db:"email"`
+	PhoneNumber sql.NullString `db:"phone_number"`
 
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`

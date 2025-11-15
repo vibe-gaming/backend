@@ -15,6 +15,7 @@ import (
 
 	internalV1 "github.com/vibe-gaming/backend/internal/api/http/internal/v1"
 	"github.com/vibe-gaming/backend/internal/config"
+	"github.com/vibe-gaming/backend/internal/esia"
 	"github.com/vibe-gaming/backend/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -24,13 +25,20 @@ type Handler struct {
 	services     *service.Services
 	tokenManager auth.TokenManager
 	config       *config.Config
+	esiaClient   *esia.Client
 }
 
-func NewHandlers(services *service.Services, tokenManager auth.TokenManager, cfg *config.Config) *Handler {
+func NewHandlers(
+	services *service.Services,
+	tokenManager auth.TokenManager,
+	cfg *config.Config,
+	esiaClient *esia.Client,
+) *Handler {
 	return &Handler{
 		services:     services,
 		tokenManager: tokenManager,
 		config:       cfg,
+		esiaClient:   esiaClient,
 	}
 }
 
@@ -57,7 +65,7 @@ func (h *Handler) Init(cfg *config.Config) *gin.Engine {
 }
 
 func (h *Handler) initAPI(router *gin.Engine) {
-	internalHandlersV1 := internalV1.NewHandler(h.services, h.tokenManager, h.config)
+	internalHandlersV1 := internalV1.NewHandler(h.services, h.tokenManager, h.config, h.esiaClient)
 	api := router.Group("/api")
 	internalHandlersV1.Init(api)
 }

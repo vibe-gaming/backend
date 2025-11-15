@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/vibe-gaming/backend/internal/config"
+	"github.com/vibe-gaming/backend/internal/esia"
 	"github.com/vibe-gaming/backend/internal/repository"
 	"github.com/vibe-gaming/backend/pkg/auth"
 	"github.com/vibe-gaming/backend/pkg/hash"
@@ -22,6 +23,7 @@ type Deps struct {
 	TokenManager auth.TokenManager
 	OtpGenerator otp.Generator
 	Repos        *repository.Repositories
+	EsiaClient   *esia.Client
 }
 
 func NewServices(deps Deps) *Services {
@@ -31,6 +33,7 @@ func NewServices(deps Deps) *Services {
 			deps.Hasher,
 			deps.TokenManager,
 			deps.OtpGenerator,
+			deps.EsiaClient,
 			deps.Config.Auth,
 			deps.Config,
 		),
@@ -38,6 +41,6 @@ func NewServices(deps Deps) *Services {
 }
 
 type Users interface {
-	AuthESIA(ctx context.Context, code string, userAgent string, userIP string) (*Tokens, error)
+	Auth(ctx context.Context, code string, userAgent string, userIP string) (*Tokens, error)
 	createSession(ctx context.Context, userID *uuid.UUID, userAgent *string, userIP *string) (*Tokens, error)
 }

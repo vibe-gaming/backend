@@ -11,12 +11,12 @@ CREATE TABLE user (
     middle_name VARCHAR(255) DEFAULT NULL COMMENT 'Отчество',
     snils VARCHAR(20) DEFAULT NULL COMMENT 'СНИЛС',
     email VARCHAR(255) DEFAULT NULL COMMENT 'Email',
-    mobile VARCHAR(20) DEFAULT NULL COMMENT 'Мобильный телефон',
+    phone_number VARCHAR(20) DEFAULT NULL COMMENT 'Мобильный телефон',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at DATETIME DEFAULT NULL,
     PRIMARY KEY (`id`),
-    UNIQUE KEY user_idx_external_id (external_id);
+    UNIQUE KEY user_idx_external_id (external_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE refresh_session (
