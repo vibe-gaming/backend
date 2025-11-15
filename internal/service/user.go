@@ -110,7 +110,7 @@ func (s *userService) Auth(ctx context.Context, code string, userAgent string, u
 	// Проверить, существует ли пользователь с таким ESIA OID
 	existingUser, err := s.userRepository.GetByExternalID(ctx, userInfo.OID)
 	if err != nil && !errors.Is(err, domain.ErrNotFound) {
-		return nil, fmt.Errorf("get user by esia oid failed: %w", err)
+		return nil, fmt.Errorf("get user by external id failed: %w", err)
 	}
 
 	var userID uuid.UUID

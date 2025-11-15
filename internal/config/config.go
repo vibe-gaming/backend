@@ -90,7 +90,7 @@ type Cache struct {
 type ESIAConfig struct {
 	BaseURL     string `env:"ESIA_BASE_URL" env-default:"http://localhost:8085"`
 	ClientID    string `env:"ESIA_CLIENT_ID" env-default:"test_client"`
-	RedirectURI string `env:"ESIA_REDIRECT_URI" env-default:"http://localhost:8080/api/v1/auth/esia/callback"`
+	RedirectURI string `env:"ESIA_REDIRECT_URI" env-default:"http://localhost:8080/api/v1/users/auth/callback"`
 	Scope       string `env:"ESIA_SCOPE" env-default:"openid profile email"`
 }
 

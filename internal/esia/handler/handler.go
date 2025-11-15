@@ -15,9 +15,10 @@ import (
 )
 
 type Handler struct {
-	codes  map[string]*AuthCode
-	tokens map[string]*Token
-	mu     sync.RWMutex
+	codes        map[string]*AuthCode
+	tokens       map[string]*Token
+	userSessions map[string]string // code -> phone number
+	mu           sync.RWMutex
 }
 
 type AuthCode struct {
@@ -25,6 +26,7 @@ type AuthCode struct {
 	ClientID    string
 	RedirectURI string
 	State       string
+	PhoneNumber string
 	CreatedAt   time.Time
 }
 
@@ -34,6 +36,7 @@ type Token struct {
 	IDToken      string
 	ExpiresIn    int
 	TokenType    string
+	PhoneNumber  string // Номер телефона пользователя
 	CreatedAt    time.Time
 }
 
@@ -68,8 +71,9 @@ type UserInfo struct {
 
 func New() *Handler {
 	return &Handler{
-		codes:  make(map[string]*AuthCode),
-		tokens: make(map[string]*Token),
+		codes:        make(map[string]*AuthCode),
+		tokens:       make(map[string]*Token),
+		userSessions: make(map[string]string),
 	}
 }
 
@@ -96,6 +100,241 @@ func (h *Handler) Authorize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Показываем форму для ввода номера телефона
+	html := `
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход через Госуслуги</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #0d47a1 0%, #1976d2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-width: 400px;
+            width: 100%;
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo-icon {
+            width: 80px;
+            height: 80px;
+            background: #0d47a1;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        h1 {
+            color: #333;
+            font-size: 24px;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            text-align: center;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            color: #333;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+        input[type="tel"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        input[type="tel"]:focus {
+            outline: none;
+            border-color: #1976d2;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            background: #0d47a1;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #1976d2;
+        }
+        button:active {
+            background: #0a3a7f;
+        }
+        .info {
+            margin-top: 20px;
+            padding: 12px;
+            background: #e3f2fd;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #0d47a1;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <div class="logo-icon">Г</div>
+        </div>
+        <h1>Вход через Госуслуги</h1>
+        <p class="subtitle">Введите номер телефона для авторизации</p>
+        <form method="POST" action="/aas/oauth2/authorize">
+            <input type="hidden" name="client_id" value="` + clientID + `">
+            <input type="hidden" name="redirect_uri" value="` + redirectURI + `">
+            <input type="hidden" name="state" value="` + state + `">
+            <input type="hidden" name="scope" value="` + scope + `">
+            <input type="hidden" name="response_type" value="` + responseType + `">
+            
+            <div class="form-group">
+                <label for="phone">Номер телефона</label>
+                <input 
+                    type="tel" 
+                    id="phone-display" 
+                    placeholder="+7 (999) 123-45-67" 
+                    required
+                    autocomplete="tel"
+                >
+                <input type="hidden" id="phone" name="phone">
+            </div>
+            
+            <button type="submit">Продолжить</button>
+            
+            <div class="info">
+                🔒 Тестовая среда ЕСИА<br>
+                Введите любой номер телефона
+            </div>
+        </form>
+    </div>
+    
+    <script>
+        const phoneInput = document.getElementById('phone-display');
+        const phoneHidden = document.getElementById('phone');
+        const form = document.querySelector('form');
+        
+        // Маска для отображения
+        phoneInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            
+            // Ограничиваем до 11 цифр
+            if (value.length > 11) {
+                value = value.slice(0, 11);
+            }
+            
+            let formattedValue = '';
+            
+            if (value.length > 0) {
+                formattedValue = '+7';
+                if (value.length > 1) {
+                    formattedValue += ' (' + value.slice(1, 4);
+                }
+                if (value.length >= 4) {
+                    formattedValue += ') ' + value.slice(4, 7);
+                }
+                if (value.length >= 7) {
+                    formattedValue += '-' + value.slice(7, 9);
+                }
+                if (value.length >= 9) {
+                    formattedValue += '-' + value.slice(9, 11);
+                }
+            }
+            
+            e.target.value = formattedValue;
+        });
+        
+        // При отправке формы - форматируем в "79644223811"
+        form.addEventListener('submit', function(e) {
+            const displayValue = phoneInput.value.replace(/\D/g, '');
+            
+            // Проверяем, что введено 11 цифр
+            if (displayValue.length !== 11) {
+                e.preventDefault();
+                alert('Пожалуйста, введите полный номер телефона');
+                return false;
+            }
+            
+            // Сохраняем в скрытое поле в формате "79644223811"
+            phoneHidden.value = displayValue;
+        });
+        
+        // Автофокус на поле
+        phoneInput.focus();
+    </script>
+</body>
+</html>
+`
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(html))
+}
+
+// AuthorizeSubmit обрабатывает отправку формы авторизации
+func (h *Handler) AuthorizeSubmit(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, "invalid_request", http.StatusBadRequest)
+		return
+	}
+
+	clientID := r.FormValue("client_id")
+	redirectURI := r.FormValue("redirect_uri")
+	state := r.FormValue("state")
+	phoneNumber := r.FormValue("phone")
+
+	logger.Info("Authorization form submitted",
+		zap.String("client_id", clientID),
+		zap.String("phone", phoneNumber),
+	)
+
+	if clientID == "" || redirectURI == "" || phoneNumber == "" {
+		http.Error(w, "invalid_request", http.StatusBadRequest)
+		return
+	}
+
 	code := h.generateCode()
 
 	h.mu.Lock()
@@ -104,8 +343,10 @@ func (h *Handler) Authorize(w http.ResponseWriter, r *http.Request) {
 		ClientID:    clientID,
 		RedirectURI: redirectURI,
 		State:       state,
+		PhoneNumber: phoneNumber,
 		CreatedAt:   time.Now(),
 	}
+	h.userSessions[code] = phoneNumber
 	h.mu.Unlock()
 
 	redirectURL := fmt.Sprintf("%s?code=%s", redirectURI, code)
@@ -179,6 +420,7 @@ func (h *Handler) Token(w http.ResponseWriter, r *http.Request) {
 		IDToken:      idToken,
 		ExpiresIn:    3600,
 		TokenType:    "Bearer",
+		PhoneNumber:  authCode.PhoneNumber,
 		CreatedAt:    time.Now(),
 	}
 
@@ -220,12 +462,18 @@ func (h *Handler) UserInfo(w http.ResponseWriter, r *http.Request) {
 	accessToken := parts[1]
 
 	h.mu.RLock()
-	_, exists := h.tokens[accessToken]
+	token, exists := h.tokens[accessToken]
 	h.mu.RUnlock()
 
 	if !exists {
 		http.Error(w, "invalid_token", http.StatusUnauthorized)
 		return
+	}
+
+	// Используем номер телефона из токена
+	phoneNumber := token.PhoneNumber
+	if phoneNumber == "" {
+		phoneNumber = "+79991234567" // дефолтный номер если не задан
 	}
 
 	// Возвращаем мок данные пользователя
@@ -239,7 +487,7 @@ func (h *Handler) UserInfo(w http.ResponseWriter, r *http.Request) {
 		SNILS:       "12345678901",
 		INN:         "123456789012",
 		Email:       "ivanov@example.com",
-		Mobile:      "+79991234567",
+		Mobile:      phoneNumber,
 		Trusted:     true,
 		Verified:    true,
 		Citizenship: "RUS",
