@@ -27,7 +27,6 @@ type Deps struct {
 func NewServices(deps Deps) *Services {
 	return &Services{
 		Users: newUserService(deps.Repos.Users,
-			deps.Repos.UserRegistration,
 			deps.Repos.RefreshSession,
 			deps.Hasher,
 			deps.TokenManager,
@@ -39,7 +38,6 @@ func NewServices(deps Deps) *Services {
 }
 
 type Users interface {
-	Register(ctx context.Context, input *UserRegisterInput) error
-	Auth(ctx context.Context, input *UserAuthInput) (*Tokens, error)
+	AuthESIA(ctx context.Context, code string, userAgent string, userIP string) (*Tokens, error)
 	createSession(ctx context.Context, userID *uuid.UUID, userAgent *string, userIP *string) (*Tokens, error)
 }

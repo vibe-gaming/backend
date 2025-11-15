@@ -15,6 +15,7 @@ import (
 	"github.com/vibe-gaming/backend/internal/cache"
 	"github.com/vibe-gaming/backend/internal/config"
 	"github.com/vibe-gaming/backend/internal/db"
+	"github.com/vibe-gaming/backend/internal/esia"
 	"github.com/vibe-gaming/backend/internal/queue/asynqserver"
 	"github.com/vibe-gaming/backend/internal/queue/client"
 	"github.com/vibe-gaming/backend/internal/repository"
@@ -105,7 +106,7 @@ func main() {
 		EmailProvider: emailSender,
 		Config:        cfg,
 	})
-	handlers := apiHttp.NewHandlers(services, tokenManager)
+	handlers := apiHttp.NewHandlers(services, tokenManager, cfg)
 
 	// HTTP Server
 	srv := server.NewServer(cfg, handlers.Init(cfg))
@@ -132,6 +133,12 @@ func main() {
 	}
 
 	logger.Info("asynq server started")
+
+	// mock esia server
+	go func() {
+		esia.RunMockServer()
+	}()
+
 	logger.Info("app started")
 
 	// Graceful Shutdown

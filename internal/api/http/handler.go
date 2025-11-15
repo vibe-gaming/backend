@@ -23,12 +23,14 @@ import (
 type Handler struct {
 	services     *service.Services
 	tokenManager auth.TokenManager
+	config       *config.Config
 }
 
-func NewHandlers(services *service.Services, tokenManager auth.TokenManager) *Handler {
+func NewHandlers(services *service.Services, tokenManager auth.TokenManager, cfg *config.Config) *Handler {
 	return &Handler{
 		services:     services,
 		tokenManager: tokenManager,
+		config:       cfg,
 	}
 }
 
@@ -55,7 +57,7 @@ func (h *Handler) Init(cfg *config.Config) *gin.Engine {
 }
 
 func (h *Handler) initAPI(router *gin.Engine) {
-	internalHandlersV1 := internalV1.NewHandler(h.services, h.tokenManager)
+	internalHandlersV1 := internalV1.NewHandler(h.services, h.tokenManager, h.config)
 	api := router.Group("/api")
 	internalHandlersV1.Init(api)
 }

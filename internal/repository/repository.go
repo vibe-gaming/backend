@@ -10,36 +10,22 @@ import (
 )
 
 type Repositories struct {
-	Users            Users
-	UserRegistration UserRegistration
-	RefreshSession   RefreshSession
-	UserVerification UserVerification
+	Users          Users
+	RefreshSession RefreshSession
 }
 
 func NewRepositories(db *sqlx.DB) *Repositories {
 	return &Repositories{
-		Users:            newUserRepository(db),
-		UserRegistration: newUserRegistrationRepository(db),
-		RefreshSession:   newRefreshSessionRepository(db),
-		UserVerification: newUserVerificationRepository(db),
+		Users:          newUserRepository(db),
+		RefreshSession: newRefreshSessionRepository(db),
 	}
 }
 
 type Users interface {
 	Create(ctx context.Context, user *domain.User) error
 	GetByCredentials(ctx context.Context, email string, password string) (*uuid.UUID, error)
-}
-
-type UserVerification interface {
-	Create(ctx context.Context, userVerification *domain.UserVerification) error
-	GetOneByID(ctx context.Context, id uuid.UUID) (*domain.UserVerification, error)
-	UpdateConfirmedByIDWithTx(ctx context.Context, tx *sqlx.Tx, userVerification *domain.UserVerification) error
-}
-
-type UserRegistration interface {
-	GetById(ctx context.Context, id uuid.UUID) (*domain.UserRegistration, error)
-	Create(ctx context.Context, userRegistration *domain.UserRegistration) error
-	Verify(ctx context.Context, id uuid.UUID, code string) error
+	GetByESIAOID(ctx context.Context, esiaOID string) (*domain.User, error)
+	CreateESIAUser(ctx context.Context, user *domain.User) error
 }
 
 type RefreshSession interface {

@@ -1,118 +1,27 @@
 package v1
 
 import (
-	"errors"
+	"crypto/rand"
+	"encoding/base64"
 	"net/http"
 
-	"github.com/vibe-gaming/backend/internal/service"
+	"github.com/google/uuid"
+	"github.com/vibe-gaming/backend/internal/esia"
 	"github.com/vibe-gaming/backend/pkg/logger"
 	"go.uber.org/zap"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 func (h *Handler) initUsersRoutes(api *gin.RouterGroup) {
 	users := api.Group("/users")
 
-	users.POST("/register", h.userRegister)
-	users.POST("/auth", h.userAuth)
-	users.POST("/auth/refresh", h.userRefresh)
-
 	users.GET("/pong", h.userIdentityMiddleware, h.pong)
-}
 
-type userRegisterRequest struct {
-	Login    string `json:"name" binding:"required,min=2,max=64" example:"wazzup"`
-	Email    string `json:"email" binding:"required,email,max=64" example:"mail@mail.com"`
-	Password string `json:"password" binding:"required,min=8,max=64" example:"notasecretpassword"`
-}
-
-// @Summary Регистрация
-// @Tags User Auth
-// @Description Создание аккаунта юзера
-// @ModuleID userRegister
-// @Accept  json
-// @Produce  json
-// @Param input body userRegisterRequest true "Регистрация"
-// @Success 201
-// @Failure 400 {object} ErrorStruct
-// @Failure 500
-// @Router /users/register [post]
-func (h *Handler) userRegister(c *gin.Context) {
-	var req userRegisterRequest
-	if err := c.BindJSON(&req); err != nil {
-		validationErrorResponse(c, err)
-		return
-	}
-
-	err := h.services.Users.Register(c.Request.Context(), &service.UserRegisterInput{
-		Login:    req.Login,
-		Email:    req.Email,
-		Password: req.Password,
-	})
-
-	if err != nil {
-		if errors.Is(err, service.ErrUserAlreadyExist) {
-			errorResponse(c, UserAlreadyExistsCode)
-			return
-		}
-		logger.Error("failed to create user", zap.Error(err))
-		c.Status(http.StatusBadRequest)
-		return
-	}
-
-	c.Status(http.StatusCreated)
-}
-
-type userAuthRequest struct {
-	Email    string `json:"email" binding:"required,email,max=64" example:"mail@mail.com"`
-	Password string `json:"password" binding:"required,min=8,max=64" example:"notasecretpassword"`
-}
-
-type userAuthResponse struct {
-	AccessToken  string    `json:"access_token"`
-	RefreshToken uuid.UUID `json:"refresh_token"`
-}
-
-// @Summary Аутентификация
-// @Tags User Auth
-// @Description Аутентификация пользователей
-// @ModuleID user
-// @Accept  json
-// @Produce  json
-// @Param input body userAuthRequest true "Аутентификация"
-// @Success 200 {object} userAuthResponse
-// @Failure 400 {object} ErrorStruct
-// @Router /users/auth [post]
-func (h *Handler) userAuth(c *gin.Context) {
-	var req userAuthRequest
-	if err := c.BindJSON(&req); err != nil {
-		validationErrorResponse(c, err)
-	}
-
-	result, err := h.services.Users.Auth(c.Request.Context(), &service.UserAuthInput{
-		Email:     req.Email,
-		Password:  req.Password,
-		UserAgent: c.Request.UserAgent(),
-		IP:        c.ClientIP(),
-	})
-	if err != nil {
-		logger.Error("user auth failed", zap.Error(err))
-		c.Status(http.StatusBadRequest)
-		return
-	}
-
-	response := userAuthResponse{
-		AccessToken:  result.AccessToken,
-		RefreshToken: result.RefreshToken,
-	}
-
-	c.JSON(http.StatusOK, response)
-}
-
-func (h *Handler) userRefresh(c *gin.Context) {
-
+	// ESIA OAuth routes
+	auth := api.Group("/auth")
+	auth.GET("/esia/login", h.esiaLogin)
+	auth.GET("/esia/callback", h.esiaCallback)
 }
 
 // @Summary Pong
@@ -128,4 +37,107 @@ func (h *Handler) userRefresh(c *gin.Context) {
 // @Router /users/pong [get]
 func (h *Handler) pong(c *gin.Context) {
 	c.String(http.StatusOK, "pong")
+}
+
+type userAuthResponse struct {
+	AccessToken  string    `json:"access_token"`
+	RefreshToken uuid.UUID `json:"refresh_token"`
+}
+
+// Хранилище для CSRF state токенов (в продакшене использовать Redis)
+var stateStore = make(map[string]bool)
+
+// @Summary ESIA OAuth Login
+// @Tags ESIA Auth
+// @Description Перенаправление на ESIA для авторизации
+// @ModuleID esiaLogin
+// @Accept  json
+// @Produce  json
+// @Success 302
+// @Router /auth/esia/login [get]
+func (h *Handler) esiaLogin(c *gin.Context) {
+	// Генерируем state для защиты от CSRF
+	state := generateState()
+	stateStore[state] = true
+
+	// Сохраняем state в cookie для проверки при callback
+	c.SetCookie("esia_state", state, 600, "/", "", false, true)
+
+	// Создаем ESIA клиент
+	esiaClient := esia.NewClient(h.config.ESIA)
+
+	// Получаем URL авторизации
+	authURL := esiaClient.GetAuthorizationURL(state)
+
+	logger.Info("Redirecting to ESIA", zap.String("url", authURL))
+
+	// Перенаправляем пользователя на ESIA
+	c.Redirect(http.StatusFound, authURL)
+}
+
+// @Summary ESIA OAuth Callback
+// @Tags ESIA Auth
+// @Description Callback endpoint для ESIA OAuth
+// @ModuleID esiaCallback
+// @Accept  json
+// @Produce  json
+// @Param code query string true "Authorization code"
+// @Param state query string true "State parameter"
+// @Success 200 {object} userAuthResponse
+// @Failure 400 {object} ErrorStruct
+// @Router /auth/esia/callback [get]
+func (h *Handler) esiaCallback(c *gin.Context) {
+	code := c.Query("code")
+	state := c.Query("state")
+
+	if code == "" {
+		logger.Error("code is empty")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "code is required"})
+		return
+	}
+
+	// Проверяем state для защиты от CSRF
+	savedState, err := c.Cookie("esia_state")
+	if err != nil || savedState != state {
+		logger.Error("invalid state", zap.String("saved", savedState), zap.String("received", state))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid state"})
+		return
+	}
+
+	// Проверяем, что state существует в нашем хранилище
+	if !stateStore[state] {
+		logger.Error("state not found in store")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid state"})
+		return
+	}
+
+	// Удаляем использованный state
+	delete(stateStore, state)
+	c.SetCookie("esia_state", "", -1, "/", "", false, true)
+
+	logger.Info("ESIA callback received", zap.String("code", code[:10]+"..."))
+
+	// Выполняем авторизацию через сервис
+	result, err := h.services.Users.AuthESIA(c.Request.Context(), code, c.Request.UserAgent(), c.ClientIP())
+	if err != nil {
+		logger.Error("esia auth failed", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "authorization failed"})
+		return
+	}
+
+	response := userAuthResponse{
+		AccessToken:  result.AccessToken,
+		RefreshToken: result.RefreshToken,
+	}
+
+	logger.Info("ESIA auth successful")
+
+	c.JSON(http.StatusOK, response)
+}
+
+// generateState генерирует случайный state для OAuth
+func generateState() string {
+	b := make([]byte, 32)
+	rand.Read(b)
+	return base64.URLEncoding.EncodeToString(b)
 }

@@ -17,6 +17,7 @@ type Config struct {
 	SMTP       SMTPConfig
 	Email      EmailConfig
 	Cache      Cache
+	ESIA       ESIAConfig
 }
 
 type HttpServer struct {
@@ -84,6 +85,13 @@ type Cache struct {
 		Password  string   `env:"REDIS_PASSWORD" env-default:"" env-description:"redis password if exists"`
 		PoolSize  int      `env:"REDIS_POOL_SIZE" env-default:"70" env-description:"max tcp connections pool size"`
 	}
+}
+
+type ESIAConfig struct {
+	BaseURL     string `env:"ESIA_BASE_URL" env-default:"http://localhost:8085"`
+	ClientID    string `env:"ESIA_CLIENT_ID" env-default:"test_client"`
+	RedirectURI string `env:"ESIA_REDIRECT_URI" env-default:"http://localhost:8080/api/v1/auth/esia/callback"`
+	Scope       string `env:"ESIA_SCOPE" env-default:"openid profile email"`
 }
 
 func MustLoad() *Config {
