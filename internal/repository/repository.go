@@ -11,12 +11,14 @@ import (
 type Repositories struct {
 	Users          Users
 	RefreshSession RefreshSession
+	Benefits       BenefitRepository
 }
 
 func NewRepositories(db *sqlx.DB) *Repositories {
 	return &Repositories{
 		Users:          newUserRepository(db),
 		RefreshSession: newRefreshSessionRepository(db),
+		Benefits:       NewBenefitRepository(db),
 	}
 }
 

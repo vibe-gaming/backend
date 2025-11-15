@@ -2,10 +2,50 @@ basePath: /api/v1
 definitions:
   ErrorStruct:
     properties:
-      error_code:
+      ErrorCode:
         type: integer
-      error_message:
+      ErrorMessage:
         type: string
+    type: object
+  v1.benefitResponse:
+    properties:
+      city_id:
+        type: string
+      description:
+        type: string
+      how_to_use:
+        type: string
+      id:
+        type: string
+      latitude:
+        type: number
+      longitude:
+        type: number
+      region_id:
+        type: string
+      requirement:
+        type: string
+      source_url:
+        type: string
+      target_groups:
+        items:
+          type: string
+        type: array
+      title:
+        type: string
+      type:
+        type: string
+      valid_from:
+        type: string
+      valid_to:
+        type: string
+    type: object
+  v1.benefitsListResponse:
+    properties:
+      benefits:
+        items:
+          $ref: '#/definitions/v1.benefitResponse'
+        type: array
     type: object
   v1.exchangeTokenRequest:
     properties:
@@ -28,6 +68,58 @@ info:
   title: Backend API
   version: "1.0"
 paths:
+  /benefits:
+    get:
+      consumes:
+      - application/json
+      description: Получить список всех льгот
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.benefitsListResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+      summary: Get Benefits List
+      tags:
+      - Benefits
+  /benefits/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Получить льготу по ID
+      parameters:
+      - description: Benefit ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.benefitResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+      summary: Get Benefit By ID
+      tags:
+      - Benefits
   /users/auth/callback:
     get:
       consumes:

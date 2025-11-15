@@ -22,8 +22,7 @@ CREATE TABLE benefit (
                         longitude float COMMENT 'Долгота',
                         latitude float COMMENT 'Широта',
 
-                        city_id BINARY(16) DEFAULT NULL COMMENT 'ID города',
-                        region_id BINARY(16) DEFAULT NULL COMMENT 'ID региона',
+                        region json NOT NULL COMMENT 'Регионы',
 
                         requirment text NOT NULL COMMENT 'Требования к акции',
                         how_to_use text NULL COMMENT 'Как использовать акции',
@@ -34,7 +33,7 @@ CREATE TABLE benefit (
 
 INSERT INTO `benefit` (
     `id`, `title`, `description`, `valid_from`, `valid_to`, `type`,
-    `target_group_ids`, `longitude`, `latitude`, `city_id`, `region_id`,
+    `target_group_ids`, `longitude`, `latitude`, `region`,
     `requirment`, `how_to_use`, `source_url`
 ) VALUES
       (
@@ -44,7 +43,7 @@ INSERT INTO `benefit` (
           '2024-01-01 00:00:00', '2024-12-31 23:59:59', 'commercial',
           '["pensioners", "disabled"]',
           129.7388, 62.0339,
-          UUID_TO_BIN("0c0f5d68-31e3-469e-8b30-b55702659254"), UUID_TO_BIN("d425ddef-9602-4e17-8f93-00e51c22bd5d"),
+          '[14]',
           'Пенсионное удостоверение или справка об инвалидности',
           'Обратиться в офис Yakuttelecom с документом, удостоверяющим льготу',
           'https://yakuttelecom.ru/social'
@@ -56,7 +55,7 @@ INSERT INTO `benefit` (
           '2024-01-01 00:00:00', '2024-11-30 23:59:59', 'regional',
           '["pensioners"]',
           129.7335, 62.0272,
-          UUID_TO_BIN("0c0f5d68-31e3-469e-8b30-b55702659254"), UUID_TO_BIN("d425ddef-9602-4e17-8f93-00e51c22bd5d"),
+          '[14]',
           'Пенсионное удостоверение, постоянная регистрация в Якутии',
           'Подать заявление через МФЦ или портал Госуслуг',
           'https://gosuslugi14.ru/compensation'
@@ -68,7 +67,7 @@ INSERT INTO `benefit` (
           '2024-01-01 00:00:00', '2024-12-31 23:59:59', 'federal',
           '["young_families"]',
           129.7044, 62.0252,
-          UUID_TO_BIN("0c0f5d68-31e3-469e-8b30-b55702659254"), UUID_TO_BIN("d425ddef-9602-4e17-8f93-00e51c22bd5d"),
+          '[14]',
           'Возраст супругов до 35 лет, наличие детей, справки о доходах',
           'Обратиться в банк-партнер программы (Сбербанк, ВТБ и др.)',
           'https://дом.рф/programs/ipoteka-s-gospodderzhkoy'
@@ -80,7 +79,7 @@ INSERT INTO `benefit` (
           '2024-01-01 00:00:00', '2024-12-31 23:59:59', 'federal',
           '["low_income"]',
           129.6956, 62.0385,
-          UUID_TO_BIN("0c0f5d68-31e3-469e-8b30-b55702659254"), UUID_TO_BIN("d425ddef-9602-4e17-8f93-00e51c22bd5d"),
+          '[14]',
           'Справки о доходах всех членов семьи, документы на жилье',
           'Подать заявление через МФЦ или портал Госуслуг',
           'https://мфц.рф/subsidies'
@@ -92,7 +91,7 @@ INSERT INTO `benefit` (
           '2024-03-01 00:00:00', '2024-08-31 23:59:59', 'commercial',
           '["pensioners"]',
           129.7312, 62.0318,
-          UUID_TO_BIN("0c0f5d68-31e3-469e-8b30-b55702659254"), UUID_TO_BIN("d425ddef-9602-4e17-8f93-00e51c22bd5d"),
+          '[14]',
           'Пенсионное удостоверение (при первом заказе)',
           'Скачать приложение "Якутское такси", пройти верификацию',
           'https://yaktaxi.ru/pensioneram'
@@ -104,7 +103,7 @@ INSERT INTO `benefit` (
           '2024-01-01 00:00:00', '2024-12-31 23:59:59', 'federal',
           '["disabled"]',
           129.7201, 62.0287,
-          UUID_TO_BIN("0c0f5d68-31e3-469e-8b30-b55702659254"), UUID_TO_BIN("d425ddef-9602-4e17-8f93-00e51c22bd5d"),
+          '[14]',
           'Рецепт врача, удостоверение инвалида',
           'Обратиться в любую государственную аптеку',
           'https://minzdrav14.ru/lekarstva'
@@ -116,7 +115,7 @@ INSERT INTO `benefit` (
           '2024-01-01 00:00:00', '2024-12-31 23:59:59', 'regional',
           '["students"]',
           129.7433, 62.0215,
-          UUID_TO_BIN("0c0f5d68-31e3-469e-8b30-b55702659254"), UUID_TO_BIN("d425ddef-9602-4e17-8f93-00e51c22bd5d"),
+          '[14]',
           'Студенческий билет, справка из учебного заведения',
           'Оформить транспортную карту в кассах "Якутскавтотранс"',
           'https://yakutskavtotrans.ru/students'
@@ -128,7 +127,7 @@ INSERT INTO `benefit` (
           '2024-01-01 00:00:00', '2024-12-31 23:59:59', 'regional',
           '["large_families"]',
           129.7128, 62.0351,
-          UUID_TO_BIN("0c0f5d68-31e3-469e-8b30-b55702659254"), UUID_TO_BIN("d425ddef-9602-4e17-8f93-00e51c22bd5d"),
+          '[14]',
           'Удостоверение многодетной семьи',
           'Предъявить удостоверение при записи в учреждение',
           'https://yakutskobr.ru/circles'
@@ -140,7 +139,7 @@ INSERT INTO `benefit` (
           '2024-01-01 00:00:00', '2024-12-31 23:59:59', 'regional',
           '["children"]',
           129.7356, 62.0284,
-          UUID_TO_BIN("0c0f5d68-31e3-469e-8b30-b55702659254"), UUID_TO_BIN("d425ddef-9602-4e17-8f93-00e51c22bd5d"),
+          '[14]',
           'Документ, подтверждающий возраст (свидетельство о рождении, паспорт)',
           'Прийти в музей в указанный день с документом',
           'https://sakhamuseum.ru/free'
@@ -152,7 +151,7 @@ INSERT INTO `benefit` (
           '2024-01-01 00:00:00', '2024-12-31 23:59:59', 'regional',
           '["disabled"]',
           129.7267, 62.0323,
-          UUID_TO_BIN("0c0f5d68-31e3-469e-8b30-b55702659254"), UUID_TO_BIN("d425ddef-9602-4e17-8f93-00e51c22bd5d"),
+          '[14]',
           'Справка МСЭ об инвалидности',
           'Записаться по телефону бассейна, предъявить документ',
           'https://sportyakutia.ru/inclusive'
@@ -164,7 +163,7 @@ INSERT INTO `benefit` (
           '2024-01-01 00:00:00', '2024-12-31 23:59:59', 'regional',
           '["large_families"]',
           129.7089, 62.0306,
-          UUID_TO_BIN("0c0f5d68-31e3-469e-8b30-b55702659254"), UUID_TO_BIN("d425ddef-9602-4e17-8f93-00e51c22bd5d"),
+          '[14]',
           'Удостоверение многодетной семьи, ПТС на автомобиль',
           'Подать заявление в налоговую инспекцию',
           'https://nalog14.ru/benefits'
@@ -176,7 +175,7 @@ INSERT INTO `benefit` (
           '2024-01-01 00:00:00', '2024-12-31 23:59:59', 'regional',
           '["low_income", "children"]',
           129.7150, 62.0268,
-          UUID_TO_BIN("0c0f5d68-31e3-469e-8b30-b55702659254"), UUID_TO_BIN("d425ddef-9602-4e17-8f93-00e51c22bd5d"),
+          '[14]',
           'Справки о доходах родителей, заявление от законного представителя',
           'Обратиться к классному руководителю или социальному педагогу',
           'https://yaguo.ru/food'
@@ -188,7 +187,7 @@ INSERT INTO `benefit` (
           '2024-01-01 00:00:00', '2024-12-31 23:59:59', 'commercial',
           '["pensioners"]',
           129.7402, 62.0347,
-          UUID_TO_BIN("0c0f5d68-31e3-469e-8b30-b55702659254"), UUID_TO_BIN("d425ddef-9602-4e17-8f93-00e51c22bd5d"),
+         '[14]',
           'Пенсионное удостоверение',
           'Предъявить документ на кассе при оплате покупок',
           'https://tuymaada.ru/discounts'
@@ -199,8 +198,8 @@ INSERT INTO `benefit` (
           'Ветеранам труда Якутии предоставляется ежемесячная денежная выплата в размере 1500 рублей с ежегодной индексацией.',
           '2024-01-01 00:00:00', '2024-12-31 23:59:59', 'regional',
           '["veterans"]',
-          129.7321, 62.0293,
-          UUID_TO_BIN("0c0f5d68-31e3-469e-8b30-b55702659254"), UUID_TO_BIN("d425ddef-9602-4e17-8f93-00e51c22bd5d"),
+        129.7321, 62.0293,
+          '[14]',
           'Удостоверение ветерана труда, паспорт',
           'Подать заявление через МФЦ или портал Госуслуг',
           'https://sotszashita14.ru/veterany'
@@ -212,7 +211,7 @@ INSERT INTO `benefit` (
           '2024-01-01 00:00:00', '2024-12-31 23:59:59', 'commercial',
           '["students"]',
           129.7700, 62.0931,
-          UUID_TO_BIN("0c0f5d68-31e3-469e-8b30-b55702659254"), UUID_TO_BIN("d425ddef-9602-4e17-8f93-00e51c22bd5d"),
+          '[14]',
           'Действующий студенческий билет',
           'Предъявить студенческий при покупке билета или онлайн-бронировании',
           'https://polarair.ru/students'
@@ -226,3 +225,6 @@ SELECT 'down SQL query';
 -- +goose StatementEnd
 
 DROP TABLE IF EXISTS benefit;
+DROP TABLE IF EXISTS `group`;
+DROP TABLE IF EXISTS city;
+DROP TABLE IF EXISTS region;
