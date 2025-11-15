@@ -10,7 +10,7 @@
     "paths": {
         "/benefits": {
             "get": {
-                "description": "Получить список всех льгот",
+                "description": "Получить список всех льгот с пагинацией, фильтрацией и умным поиском\n\nПоиск использует Full-Text Search MySQL с автоматическим поиском по частичному совпадению:\n- Поиск \"транс\" найдет \"транспорт\", \"транспортный\" и т.д.\n- Поиск \"пенсион\" найдет \"пенсионер\", \"пенсионный\" и т.д.\n- Каждое слово ищется с начала (prefix matching)\n\nМожно использовать Boolean операторы для сложных запросов:\n+ обязательное слово: \"+пенсионер +транспорт\"\n- исключить слово: \"льгота -студент\"\n* явный wildcard: \"транс*\"\n\"\" точная фраза: \"общественный транспорт\"",
                 "consumes": [
                     "application/json"
                 ],
@@ -21,11 +21,73 @@
                     "Benefits"
                 ],
                 "summary": "Get Benefits List",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Номер страницы (по умолчанию 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Количество элементов на странице (по умолчанию 10, максимум 100)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "ID региона для фильтрации",
+                        "name": "region",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "UUID города для фильтрации",
+                        "name": "city_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Тип льготы (federal, regional, commercial)",
+                        "name": "type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Целевые группы через запятой (pensioners, disabled, students и т.д.)",
+                        "name": "target_groups",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Дата начала периода (YYYY-MM-DD)",
+                        "name": "date_from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Дата окончания периода (YYYY-MM-DD)",
+                        "name": "date_to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Поисковый запрос (автоматически ищет по частичному совпадению)",
+                        "name": "search",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/v1.benefitsListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
                         }
                     },
                     "500": {
@@ -348,10 +410,10 @@
         "ErrorStruct": {
             "type": "object",
             "properties": {
-                "error_code": {
+                "ErrorCode": {
                     "type": "integer"
                 },
-                "error_message": {
+                "ErrorMessage": {
                     "type": "string"
                 }
             }
@@ -379,32 +441,12 @@
                 }
             }
         },
-        "domain.GroupType": {
-            "type": "string",
-            "enum": [
-                "pensioners",
-                "disabled",
-                "young_families",
-                "low_income",
-                "students",
-                "large_families",
-                "children",
-                "veterans"
-            ],
-            "x-enum-varnames": [
-                "UserGroupPensioners",
-                "UserGroupDisabled",
-                "UserGroupYoungFamilies",
-                "UserGroupLowIncome",
-                "UserGroupStudents",
-                "UserGroupLargeFamilies",
-                "UserGroupChildren",
-                "UserGroupVeterans"
-            ]
-        },
         "v1.benefitResponse": {
             "type": "object",
             "properties": {
+                "city_id": {
+                    "type": "string"
+                },
                 "description": {
                     "type": "string"
                 },
@@ -460,6 +502,15 @@
                     "items": {
                         "$ref": "#/definitions/v1.benefitResponse"
                     }
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
                 }
             }
         },
@@ -504,7 +555,7 @@
                 "group_type": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/domain.GroupType"
+                        "type": "string"
                     }
                 },
                 "id": {
@@ -540,7 +591,7 @@
                 "group_type": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/domain.GroupType"
+                        "type": "string"
                     }
                 }
             }

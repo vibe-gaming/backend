@@ -58,6 +58,6 @@ type Cities interface {
 }
 
 type Benefits interface {
-	GetAll(ctx context.Context) ([]*domain.Benefit, error)
+	GetAll(ctx context.Context, page, limit int, filters *repository.BenefitFilters) ([]*domain.Benefit, int64, error)
 	GetByID(ctx context.Context, id string) (*domain.Benefit, error)
 }
