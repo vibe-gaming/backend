@@ -2,12 +2,11 @@ basePath: /api/v1
 definitions:
   ErrorStruct:
     properties:
-      ErrorCode:
+      error_code:
         type: integer
-      ErrorMessage:
+      error_message:
         type: string
     type: object
-<<<<<<< HEAD
   domain.City:
     properties:
       created_at:
@@ -35,15 +34,14 @@ definitions:
     - veterans
     type: string
     x-enum-varnames:
-    - Pensioners
-    - Disabled
-    - YoungFamilies
-    - LowIncome
-    - Students
-    - LargeFamilies
-    - Children
-    - Veterans
-=======
+    - UserGroupPensioners
+    - UserGroupDisabled
+    - UserGroupYoungFamilies
+    - UserGroupLowIncome
+    - UserGroupStudents
+    - UserGroupLargeFamilies
+    - UserGroupChildren
+    - UserGroupVeterans
   v1.benefitResponse:
     properties:
       city_id:
@@ -84,7 +82,6 @@ definitions:
           $ref: '#/definitions/v1.benefitResponse'
         type: array
     type: object
->>>>>>> main
   v1.exchangeTokenRequest:
     properties:
       code:
@@ -143,30 +140,17 @@ info:
   title: Backend API
   version: "1.0"
 paths:
-<<<<<<< HEAD
-  /cities:
-    get:
-      consumes:
-      - application/json
-      description: Get all cities
-=======
   /benefits:
     get:
       consumes:
       - application/json
       description: Получить список всех льгот
->>>>>>> main
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-<<<<<<< HEAD
-            items:
-              $ref: '#/definitions/domain.City'
-            type: array
-=======
             $ref: '#/definitions/v1.benefitsListResponse'
         "500":
           description: Internal Server Error
@@ -193,31 +177,46 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/v1.benefitResponse'
->>>>>>> main
         "400":
           description: Bad Request
           schema:
             $ref: '#/definitions/ErrorStruct'
-<<<<<<< HEAD
-=======
         "404":
           description: Not Found
           schema:
             $ref: '#/definitions/ErrorStruct'
->>>>>>> main
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/ErrorStruct'
-<<<<<<< HEAD
-      summary: Get Cities
-      tags:
-      - Cities
-=======
       summary: Get Benefit By ID
       tags:
       - Benefits
->>>>>>> main
+  /cities:
+    get:
+      consumes:
+      - application/json
+      description: Get all cities
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.City'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+      summary: Get Cities
+      tags:
+      - Cities
   /users/auth/callback:
     get:
       consumes:

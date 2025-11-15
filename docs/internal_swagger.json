@@ -8,15 +8,9 @@
     },
     "basePath": "/api/v1",
     "paths": {
-<<<<<<< HEAD
-        "/cities": {
-            "get": {
-                "description": "Get all cities",
-=======
         "/benefits": {
             "get": {
                 "description": "Получить список всех льгот",
->>>>>>> main
                 "consumes": [
                     "application/json"
                 ],
@@ -24,25 +18,13 @@
                     "application/json"
                 ],
                 "tags": [
-<<<<<<< HEAD
-                    "Cities"
-                ],
-                "summary": "Get Cities",
-=======
                     "Benefits"
                 ],
                 "summary": "Get Benefits List",
->>>>>>> main
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-<<<<<<< HEAD
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/domain.City"
-                            }
-=======
                             "$ref": "#/definitions/v1.benefitsListResponse"
                         }
                     },
@@ -82,7 +64,6 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/v1.benefitResponse"
->>>>>>> main
                         }
                     },
                     "400": {
@@ -91,15 +72,50 @@
                             "$ref": "#/definitions/ErrorStruct"
                         }
                     },
-<<<<<<< HEAD
-=======
                     "404": {
                         "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/ErrorStruct"
                         }
                     },
->>>>>>> main
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    }
+                }
+            }
+        },
+        "/cities": {
+            "get": {
+                "description": "Get all cities",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cities"
+                ],
+                "summary": "Get Cities",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/domain.City"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -332,15 +348,14 @@
         "ErrorStruct": {
             "type": "object",
             "properties": {
-                "ErrorCode": {
+                "error_code": {
                     "type": "integer"
                 },
-                "ErrorMessage": {
+                "error_message": {
                     "type": "string"
                 }
             }
         },
-<<<<<<< HEAD
         "domain.City": {
             "type": "object",
             "properties": {
@@ -348,7 +363,45 @@
                     "type": "string"
                 },
                 "deleted_at": {
-=======
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "region_id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.GroupType": {
+            "type": "string",
+            "enum": [
+                "pensioners",
+                "disabled",
+                "young_families",
+                "low_income",
+                "students",
+                "large_families",
+                "children",
+                "veterans"
+            ],
+            "x-enum-varnames": [
+                "UserGroupPensioners",
+                "UserGroupDisabled",
+                "UserGroupYoungFamilies",
+                "UserGroupLowIncome",
+                "UserGroupStudents",
+                "UserGroupLargeFamilies",
+                "UserGroupChildren",
+                "UserGroupVeterans"
+            ]
+        },
         "v1.benefitResponse": {
             "type": "object",
             "properties": {
@@ -359,29 +412,20 @@
                     "type": "string"
                 },
                 "how_to_use": {
->>>>>>> main
                     "type": "string"
                 },
                 "id": {
                     "type": "string"
                 },
-<<<<<<< HEAD
-                "name": {
-                    "type": "string"
-=======
                 "latitude": {
                     "type": "number"
                 },
                 "longitude": {
                     "type": "number"
->>>>>>> main
                 },
                 "region_id": {
                     "type": "string"
                 },
-<<<<<<< HEAD
-                "updated_at": {
-=======
                 "requirement": {
                     "type": "string"
                 },
@@ -404,35 +448,10 @@
                     "type": "string"
                 },
                 "valid_to": {
->>>>>>> main
                     "type": "string"
                 }
             }
         },
-<<<<<<< HEAD
-        "domain.GroupType": {
-            "type": "string",
-            "enum": [
-                "pensioners",
-                "disabled",
-                "young_families",
-                "low_income",
-                "students",
-                "large_families",
-                "children",
-                "veterans"
-            ],
-            "x-enum-varnames": [
-                "Pensioners",
-                "Disabled",
-                "YoungFamilies",
-                "LowIncome",
-                "Students",
-                "LargeFamilies",
-                "Children",
-                "Veterans"
-            ]
-=======
         "v1.benefitsListResponse": {
             "type": "object",
             "properties": {
@@ -443,7 +462,6 @@
                     }
                 }
             }
->>>>>>> main
         },
         "v1.exchangeTokenRequest": {
             "type": "object",
