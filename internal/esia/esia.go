@@ -13,6 +13,13 @@ func RunMockServer() {
 
 	// ESIA OAuth2 endpoints
 	http.HandleFunc("/aas/oauth2/ac", h.Authorize)
+	http.HandleFunc("/aas/oauth2/authorize", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			h.AuthorizeSubmit(w, r)
+		} else {
+			h.Authorize(w, r)
+		}
+	})
 	http.HandleFunc("/aas/oauth2/te", h.Token)
 	http.HandleFunc("/rs/prns/", h.GetPerson)
 	http.HandleFunc("/userinfo", h.UserInfo)

@@ -10,4 +10,5 @@
 1. Rollback миграций - `make migration-down`
 2. Статус миграций - `make migration-status`
 3. Генерация сваггер документации - `make swag`
-4. Запуск линтера - `make lint` 
+4. Запуск линтера - `make lint`
+5. Создать миграцию - `make migration-create`
