@@ -13,14 +13,14 @@ import (
 type GroupType string
 
 const (
-	Pensioners    GroupType = "pensioners"
-	Disabled      GroupType = "disabled"
-	YoungFamilies GroupType = "young_families"
-	LowIncome     GroupType = "low_income"
-	Students      GroupType = "students"
-	LargeFamilies GroupType = "large_families"
-	Children      GroupType = "children"
-	Veterans      GroupType = "veterans"
+	UserGroupPensioners    GroupType = "pensioners"
+	UserGroupDisabled      GroupType = "disabled"
+	UserGroupYoungFamilies GroupType = "young_families"
+	UserGroupLowIncome     GroupType = "low_income"
+	UserGroupStudents      GroupType = "students"
+	UserGroupLargeFamilies GroupType = "large_families"
+	UserGroupChildren      GroupType = "children"
+	UserGroupVeterans      GroupType = "veterans"
 )
 
 type GroupTypeList []GroupType
