@@ -17,6 +17,7 @@ import (
 type Services struct {
 	Users    Users
 	Benefits Benefits
+	Cities   Cities
 }
 
 type Deps struct {
@@ -32,6 +33,7 @@ func NewServices(deps Deps) *Services {
 	return &Services{
 		Users: newUserService(deps.Repos.Users,
 			deps.Repos.RefreshSession,
+			deps.Repos.Cities,
 			deps.Hasher,
 			deps.TokenManager,
 			deps.OtpGenerator,
@@ -40,12 +42,19 @@ func NewServices(deps Deps) *Services {
 			deps.Config,
 		),
 		Benefits: newBenefitService(deps.Repos.Benefits),
+		Cities:   newCityService(deps.Repos.Cities),
 	}
 }
 
 type Users interface {
 	Auth(ctx context.Context, code string, userAgent string, userIP string) (*Tokens, error)
 	createSession(ctx context.Context, userID *uuid.UUID, userAgent *string, userIP *string) (*Tokens, error)
+	GetOneByID(ctx context.Context, id uuid.UUID) (*domain.User, error)
+	UpdateUserInfo(ctx context.Context, userID uuid.UUID, cityID uuid.UUID, groupType domain.GroupTypeList) error
+}
+
+type Cities interface {
+	GetAll(ctx context.Context) ([]domain.City, error)
 }
 
 type Benefits interface {

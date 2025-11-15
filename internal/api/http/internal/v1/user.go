@@ -3,13 +3,16 @@ package v1
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/http"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/vibe-gaming/backend/internal/domain"
 	"github.com/vibe-gaming/backend/internal/esia"
+	"github.com/vibe-gaming/backend/internal/service"
 	"github.com/vibe-gaming/backend/pkg/logger"
 	"go.uber.org/zap"
 
@@ -33,6 +36,8 @@ func (h *Handler) initUsersRoutes(api *gin.RouterGroup) {
 	users := api.Group("/users")
 
 	users.GET("/pong", h.userIdentityMiddleware, h.pong)
+	users.GET("/profile", h.userIdentityMiddleware, h.getProfile)
+	users.POST("/update-info", h.userIdentityMiddleware, h.userUpdateInfo)
 
 	// auth routes
 	users.GET("/auth/login", h.authLogin)
@@ -251,4 +256,103 @@ func generateState() string {
 	b := make([]byte, 32)
 	rand.Read(b)
 	return base64.URLEncoding.EncodeToString(b)
+}
+
+type getProfileResponse struct {
+	ID          uuid.UUID            `json:"id"`
+	ExternalID  *string              `json:"external_id" binding:"omitempty"`
+	FirstName   *string              `json:"first_name" binding:"omitempty"`
+	LastName    *string              `json:"last_name" binding:"omitempty"`
+	MiddleName  *string              `json:"middle_name" binding:"omitempty"`
+	SNILS       *string              `json:"snils" binding:"omitempty"`
+	Email       *string              `json:"email" binding:"omitempty"`
+	PhoneNumber *string              `json:"phone_number" binding:"omitempty"`
+	CityID      *uuid.UUID           `json:"city_id" binding:"omitempty"`
+	GroupType   domain.GroupTypeList `json:"group_type" binding:"omitempty"`
+}
+
+// @Summary Get Profile
+// @Tags Users
+// @Description Get user profile
+// @ModuleID getProfile
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} getProfileResponse
+// @Failure 400 {object} ErrorStruct
+// @Failure 500 {object} ErrorStruct
+// @Security UserAuth
+// @Router /users/profile [get]
+func (h *Handler) getProfile(c *gin.Context) {
+	userID, err := h.getUserUUID(c)
+	if err != nil {
+		logger.Error("get user id failed", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	user, err := h.services.Users.GetOneByID(c.Request.Context(), userID)
+	if err != nil {
+		logger.Error("get user by id failed", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	response := getProfileResponse{
+		ID:          user.ID,
+		ExternalID:  &user.ExternalID.String,
+		FirstName:   &user.FirstName.String,
+		LastName:    &user.LastName.String,
+		MiddleName:  &user.MiddleName.String,
+		SNILS:       &user.SNILS.String,
+		Email:       &user.Email.String,
+		PhoneNumber: &user.PhoneNumber.String,
+		CityID:      user.CityID,
+		GroupType:   user.GroupType,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+type userUpdateInfoRequest struct {
+	CityID    uuid.UUID            `json:"city_id" binding:"required"`
+	GroupType domain.GroupTypeList `json:"group_type" binding:"required"`
+}
+
+// @Summary User Update Info
+// @Tags Users
+// @Description Register user
+// @ModuleID userUpdateInfo
+// @Accept  json
+// @Produce  json
+// @Param input body userUpdateInfoRequest true "User update info request"
+// @Success 200
+// @Failure 400 {object} ErrorStruct
+// @Security UserAuth
+// @Router /users/update-info [post]
+func (h *Handler) userUpdateInfo(c *gin.Context) {
+	var req userUpdateInfoRequest
+	if err := c.BindJSON(&req); err != nil {
+		logger.Error("invalid request", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	userID, err := h.getUserUUID(c)
+	if err != nil {
+		logger.Error("get user id failed", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	if err := h.services.Users.UpdateUserInfo(c.Request.Context(), userID, req.CityID, req.GroupType); err != nil {
+		if errors.Is(err, service.ErrCityNotFound) {
+			errorResponse(c, CityNotFoundErrorCode)
+			return
+		}
+		logger.Error("update user info failed", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.Status(http.StatusOK)
 }
