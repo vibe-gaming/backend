@@ -17,7 +17,7 @@ const docTemplateinternal = `{
     "paths": {
         "/users/auth/callback": {
             "get": {
-                "description": "Callback endpoint для Auth",
+                "description": "Callback endpoint для Auth - получает code от ESIA и редиректит на фронтенд",
                 "consumes": [
                     "application/json"
                 ],
@@ -45,11 +45,8 @@ const docTemplateinternal = `{
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v1.userAuthResponse"
-                        }
+                    "302": {
+                        "description": "Redirect to frontend with code"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -76,6 +73,46 @@ const docTemplateinternal = `{
                 "responses": {
                     "302": {
                         "description": "Found"
+                    }
+                }
+            }
+        },
+        "/users/auth/token": {
+            "post": {
+                "description": "Обмен authorization code на access и refresh токены (как в Keycloak)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Exchange Code for Tokens",
+                "parameters": [
+                    {
+                        "description": "Code и State",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v1.exchangeTokenRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v1.exchangeTokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
                     }
                 }
             }
@@ -127,13 +164,25 @@ const docTemplateinternal = `{
                 }
             }
         },
-        "v1.userAuthResponse": {
+        "v1.exchangeTokenRequest": {
+            "type": "object",
+            "required": [
+                "code",
+                "state"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.exchangeTokenResponse": {
             "type": "object",
             "properties": {
                 "access_token": {
-                    "type": "string"
-                },
-                "refresh_token": {
                     "type": "string"
                 }
             }

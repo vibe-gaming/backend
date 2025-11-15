@@ -8,16 +8,17 @@ import (
 )
 
 type Config struct {
-	Env        string `env:"ENV" env-required:"true"`
-	LogLevel   string `env:"LOG_LEVEL" env-default:"info" env-description:"logging level, debug, info, etc."`
-	HttpServer HttpServer
-	Database   Database
-	Limiter    Limiter
-	Auth       AuthConfig
-	SMTP       SMTPConfig
-	Email      EmailConfig
-	Cache      Cache
-	ESIA       ESIAConfig
+	Env         string `env:"ENV" env-required:"true"`
+	LogLevel    string `env:"LOG_LEVEL" env-default:"info" env-description:"logging level, debug, info, etc."`
+	FrontendURL string `env:"FRONTEND_URL" env-default:"http://localhost:3000"`
+	HttpServer  HttpServer
+	Database    Database
+	Limiter     Limiter
+	Auth        AuthConfig
+	SMTP        SMTPConfig
+	Email       EmailConfig
+	Cache       Cache
+	ESIA        ESIAConfig
 }
 
 type HttpServer struct {

@@ -7,11 +7,19 @@ definitions:
       error_message:
         type: string
     type: object
-  v1.userAuthResponse:
+  v1.exchangeTokenRequest:
+    properties:
+      code:
+        type: string
+      state:
+        type: string
+    required:
+    - code
+    - state
+    type: object
+  v1.exchangeTokenResponse:
     properties:
       access_token:
-        type: string
-      refresh_token:
         type: string
     type: object
 info:
@@ -24,7 +32,8 @@ paths:
     get:
       consumes:
       - application/json
-      description: Callback endpoint для Auth
+      description: Callback endpoint для Auth - получает code от ESIA и редиректит
+        на фронтенд
       parameters:
       - description: Authorization code
         in: query
@@ -39,10 +48,8 @@ paths:
       produces:
       - application/json
       responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/v1.userAuthResponse'
+        "302":
+          description: Redirect to frontend with code
         "400":
           description: Bad Request
           schema:
@@ -61,6 +68,32 @@ paths:
         "302":
           description: Found
       summary: OAuth Login
+      tags:
+      - Auth
+  /users/auth/token:
+    post:
+      consumes:
+      - application/json
+      description: Обмен authorization code на access и refresh токены (как в Keycloak)
+      parameters:
+      - description: Code и State
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/v1.exchangeTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.exchangeTokenResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+      summary: Exchange Code for Tokens
       tags:
       - Auth
   /users/pong:
