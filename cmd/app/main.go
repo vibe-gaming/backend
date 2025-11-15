@@ -137,11 +137,6 @@ func main() {
 
 	logger.Info("asynq server started")
 
-	// mock esia server
-	go func() {
-		esia.RunMockServer()
-	}()
-
 	logger.Info("app started")
 
 	// Graceful Shutdown
