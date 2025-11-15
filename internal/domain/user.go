@@ -65,7 +65,8 @@ type User struct {
 	CityID      *uuid.UUID     `db:"city_id" json:"city_id"`
 	GroupType   GroupTypeList  `db:"group_type" json:"group_type"`
 
-	CreatedAt time.Time  `db:"created_at" json:"created_at"`
-	UpdatedAt time.Time  `db:"updated_at" json:"updated_at"`
-	DeletedAt *time.Time `db:"deleted_at" json:"deleted_at,omitempty"`
+	CreatedAt    time.Time  `db:"created_at" json:"created_at"`
+	UpdatedAt    time.Time  `db:"updated_at" json:"updated_at"`
+	DeletedAt    *time.Time `db:"deleted_at" json:"deleted_at,omitempty"`
+	RegisteredAt *time.Time `db:"registered_at" json:"registered_at,omitempty"`
 }

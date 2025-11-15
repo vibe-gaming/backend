@@ -44,8 +44,6 @@ definitions:
     - UserGroupVeterans
   v1.benefitResponse:
     properties:
-      city_id:
-        type: string
       description:
         type: string
       how_to_use:
@@ -56,8 +54,10 @@ definitions:
         type: number
       longitude:
         type: number
-      region_id:
-        type: string
+      region:
+        items:
+          type: integer
+        type: array
       requirement:
         type: string
       source_url:
@@ -118,6 +118,8 @@ definitions:
       middle_name:
         type: string
       phone_number:
+        type: string
+      registered_at:
         type: string
       snils:
         type: string

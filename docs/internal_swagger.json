@@ -405,9 +405,6 @@
         "v1.benefitResponse": {
             "type": "object",
             "properties": {
-                "city_id": {
-                    "type": "string"
-                },
                 "description": {
                     "type": "string"
                 },
@@ -423,8 +420,11 @@
                 "longitude": {
                     "type": "number"
                 },
-                "region_id": {
-                    "type": "string"
+                "region": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "requirement": {
                     "type": "string"
@@ -517,6 +517,9 @@
                     "type": "string"
                 },
                 "phone_number": {
+                    "type": "string"
+                },
+                "registered_at": {
                     "type": "string"
                 },
                 "snils": {

@@ -91,11 +91,22 @@ func (r *userRepository) GetOneByID(ctx context.Context, id uuid.UUID) (*domain.
 	return &user, nil
 }
 
-func (r *userRepository) CompleteRegistration(ctx context.Context, userID uuid.UUID, cityID uuid.UUID, groupType domain.GroupTypeList) error {
+func (r *userRepository) UpdateUserInfo(ctx context.Context, userID uuid.UUID, cityID uuid.UUID, groupType domain.GroupTypeList) error {
 	const query = `
 	UPDATE user SET city_id = uuid_to_bin(?), group_type = ? WHERE id = uuid_to_bin(?);
 	`
 	_, err := r.db.ExecContext(ctx, query, cityID, groupType, userID)
+	if err != nil {
+		return fmt.Errorf("update user by id failed: %w", err)
+	}
+	return nil
+}
+
+func (r *userRepository) UpdateRegisteredAt(ctx context.Context, userID uuid.UUID) error {
+	const query = `
+	UPDATE user SET registered_at = now() WHERE id = uuid_to_bin(?);
+	`
+	_, err := r.db.ExecContext(ctx, query, userID)
 	if err != nil {
 		return fmt.Errorf("update user by id failed: %w", err)
 	}

@@ -259,16 +259,17 @@ func generateState() string {
 }
 
 type getProfileResponse struct {
-	ID          uuid.UUID            `json:"id"`
-	ExternalID  *string              `json:"external_id" binding:"omitempty"`
-	FirstName   *string              `json:"first_name" binding:"omitempty"`
-	LastName    *string              `json:"last_name" binding:"omitempty"`
-	MiddleName  *string              `json:"middle_name" binding:"omitempty"`
-	SNILS       *string              `json:"snils" binding:"omitempty"`
-	Email       *string              `json:"email" binding:"omitempty"`
-	PhoneNumber *string              `json:"phone_number" binding:"omitempty"`
-	CityID      *uuid.UUID           `json:"city_id" binding:"omitempty"`
-	GroupType   domain.GroupTypeList `json:"group_type" binding:"omitempty"`
+	ID           uuid.UUID            `json:"id"`
+	ExternalID   *string              `json:"external_id" binding:"omitempty"`
+	FirstName    *string              `json:"first_name" binding:"omitempty"`
+	LastName     *string              `json:"last_name" binding:"omitempty"`
+	MiddleName   *string              `json:"middle_name" binding:"omitempty"`
+	SNILS        *string              `json:"snils" binding:"omitempty"`
+	Email        *string              `json:"email" binding:"omitempty"`
+	PhoneNumber  *string              `json:"phone_number" binding:"omitempty"`
+	CityID       *uuid.UUID           `json:"city_id" binding:"omitempty"`
+	GroupType    domain.GroupTypeList `json:"group_type" binding:"omitempty"`
+	RegisteredAt *time.Time           `json:"registered_at" binding:"omitempty"`
 }
 
 // @Summary Get Profile
@@ -298,16 +299,17 @@ func (h *Handler) getProfile(c *gin.Context) {
 	}
 
 	response := getProfileResponse{
-		ID:          user.ID,
-		ExternalID:  &user.ExternalID.String,
-		FirstName:   &user.FirstName.String,
-		LastName:    &user.LastName.String,
-		MiddleName:  &user.MiddleName.String,
-		SNILS:       &user.SNILS.String,
-		Email:       &user.Email.String,
-		PhoneNumber: &user.PhoneNumber.String,
-		CityID:      user.CityID,
-		GroupType:   user.GroupType,
+		ID:           user.ID,
+		ExternalID:   &user.ExternalID.String,
+		FirstName:    &user.FirstName.String,
+		LastName:     &user.LastName.String,
+		MiddleName:   &user.MiddleName.String,
+		SNILS:        &user.SNILS.String,
+		Email:        &user.Email.String,
+		PhoneNumber:  &user.PhoneNumber.String,
+		CityID:       user.CityID,
+		GroupType:    user.GroupType,
+		RegisteredAt: user.RegisteredAt,
 	}
 
 	c.JSON(http.StatusOK, response)

@@ -412,9 +412,6 @@ const docTemplateinternal = `{
         "v1.benefitResponse": {
             "type": "object",
             "properties": {
-                "city_id": {
-                    "type": "string"
-                },
                 "description": {
                     "type": "string"
                 },
@@ -430,8 +427,11 @@ const docTemplateinternal = `{
                 "longitude": {
                     "type": "number"
                 },
-                "region_id": {
-                    "type": "string"
+                "region": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "requirement": {
                     "type": "string"
@@ -524,6 +524,9 @@ const docTemplateinternal = `{
                     "type": "string"
                 },
                 "phone_number": {
+                    "type": "string"
+                },
+                "registered_at": {
                     "type": "string"
                 },
                 "snils": {

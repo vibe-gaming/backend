@@ -186,5 +186,10 @@ func (s *userService) UpdateUserInfo(ctx context.Context, userID uuid.UUID, city
 		return fmt.Errorf("get city by id failed: %w", err)
 	}
 
-	return s.userRepository.CompleteRegistration(ctx, userID, cityID, groupType)
+	// TODO: add transaction
+	if err := s.userRepository.UpdateRegisteredAt(ctx, userID); err != nil {
+		return fmt.Errorf("update registered at failed: %w", err)
+	}
+
+	return s.userRepository.UpdateUserInfo(ctx, userID, cityID, groupType)
 }
