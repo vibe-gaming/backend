@@ -464,6 +464,58 @@
                 "UserGroupVeterans"
             ]
         },
+        "domain.UserGroup": {
+            "type": "object",
+            "properties": {
+                "error_message": {
+                    "description": "Сообщение об ошибке",
+                    "type": "string"
+                },
+                "expires_at": {
+                    "description": "Когда истекает",
+                    "type": "string"
+                },
+                "external_id": {
+                    "description": "ID из внешнего API",
+                    "type": "string"
+                },
+                "rejected_at": {
+                    "description": "Когда отклонена",
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/domain.VerificationStatus"
+                },
+                "type": {
+                    "$ref": "#/definitions/domain.GroupType"
+                },
+                "verified_at": {
+                    "description": "Когда подтверждена",
+                    "type": "string"
+                }
+            }
+        },
+        "domain.VerificationStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "verified",
+                "rejected",
+                "expired"
+            ],
+            "x-enum-comments": {
+                "VerificationStatusExpired": "Истекла",
+                "VerificationStatusPending": "Ожидает подтверждения",
+                "VerificationStatusRejected": "Отклонена",
+                "VerificationStatusVerified": "Подтверждена"
+            },
+            "x-enum-varnames": [
+                "VerificationStatusPending",
+                "VerificationStatusVerified",
+                "VerificationStatusRejected",
+                "VerificationStatusExpired"
+            ]
+        },
         "v1.benefitResponse": {
             "type": "object",
             "properties": {
@@ -575,10 +627,10 @@
                 "first_name": {
                     "type": "string"
                 },
-                "group_type": {
+                "groups": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/domain.GroupType"
+                        "$ref": "#/definitions/domain.UserGroup"
                     }
                 },
                 "id": {
@@ -605,13 +657,13 @@
             "type": "object",
             "required": [
                 "city_id",
-                "group_type"
+                "groups"
             ],
             "properties": {
                 "city_id": {
                     "type": "string"
                 },
-                "group_type": {
+                "groups": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/domain.GroupType"

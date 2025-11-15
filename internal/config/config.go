@@ -8,17 +8,18 @@ import (
 )
 
 type Config struct {
-	Env         string `env:"ENV" env-required:"true"`
-	LogLevel    string `env:"LOG_LEVEL" env-default:"info" env-description:"logging level, debug, info, etc."`
-	FrontendURL string `env:"FRONTEND_URL" env-default:"http://localhost:3000"`
-	HttpServer  HttpServer
-	Database    Database
-	Limiter     Limiter
-	Auth        AuthConfig
-	SMTP        SMTPConfig
-	Email       EmailConfig
-	Cache       Cache
-	ESIA        ESIAConfig
+	Env                string `env:"ENV" env-required:"true"`
+	LogLevel           string `env:"LOG_LEVEL" env-default:"info" env-description:"logging level, debug, info, etc."`
+	FrontendURL        string `env:"FRONTEND_URL" env-default:"http://localhost:3000"`
+	HttpServer         HttpServer
+	Database           Database
+	Limiter            Limiter
+	Auth               AuthConfig
+	SMTP               SMTPConfig
+	Email              EmailConfig
+	Cache              Cache
+	ESIA               ESIAConfig
+	SocialGroupChecker SocialGroupCheckerConfig
 }
 
 type HttpServer struct {
@@ -94,6 +95,10 @@ type ESIAConfig struct {
 	ClientID    string `env:"ESIA_CLIENT_ID" env-default:"test_client"`
 	RedirectURI string `env:"ESIA_REDIRECT_URI" env-default:"http://localhost:8080/api/v1/users/auth/callback"`
 	Scope       string `env:"ESIA_SCOPE" env-default:"openid profile email"`
+}
+
+type SocialGroupCheckerConfig struct {
+	BaseURL string `env:"SOCIAL_GROUP_CHECKER_BASE_URL" env-default:"https://social-group-checker-mock-production.up.railway.app"`
 }
 
 func MustLoad() *Config {

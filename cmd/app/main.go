@@ -21,6 +21,7 @@ import (
 	"github.com/vibe-gaming/backend/internal/repository"
 	"github.com/vibe-gaming/backend/internal/server"
 	"github.com/vibe-gaming/backend/internal/service"
+	socialgroupchecker "github.com/vibe-gaming/backend/internal/service/social_group_checker"
 	"github.com/vibe-gaming/backend/internal/worker"
 	"github.com/vibe-gaming/backend/pkg/auth"
 	"github.com/vibe-gaming/backend/pkg/email/smtp"
@@ -92,6 +93,7 @@ func main() {
 	otpGenerator := otp.NewGOTPGenerator()
 
 	esiaClient := esia.NewClient(cfg.ESIA)
+	socialGroupCheckerClient := socialgroupchecker.NewClient(cfg.SocialGroupChecker.BaseURL)
 
 	// Services, Repos & API Handlers
 	repos := repository.NewRepositories(dbMySQL)
@@ -104,10 +106,11 @@ func main() {
 		EsiaClient:   esiaClient,
 	})
 	workers := worker.NewWorkers(worker.Deps{
-		Redis:         redis,
-		Services:      services,
-		EmailProvider: emailSender,
-		Config:        cfg,
+		Redis:                    redis,
+		Services:                 services,
+		EmailProvider:            emailSender,
+		Config:                   cfg,
+		SocialGroupCheckerClient: socialGroupCheckerClient,
 	})
 	handlers := apiHttp.NewHandlers(services, tokenManager, cfg, esiaClient)
 

@@ -43,8 +43,10 @@ func RedisOptions(cfg config.Cache) asynq.RedisConnOpt {
 func getQueues(workers *worker.Workers) (*asynq.ServeMux, map[string]int) {
 	mux := asynq.NewServeMux()
 	mux.Handle(task.SendEmailTaskName, processor.NewSendEmailProcessor(workers))
+	mux.Handle(task.CheckSocialGroupTaskName, processor.NewCheckSocialGroupProcessor(workers))
 	queues := map[string]int{
-		task.SendEmailQueueName: 1,
+		task.SendEmailQueueName:        1,
+		task.CheckSocialGroupQueueName: 1,
 	}
 	return mux, queues
 }

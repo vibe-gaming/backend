@@ -50,7 +50,8 @@ type Users interface {
 	Auth(ctx context.Context, code string, userAgent string, userIP string) (*Tokens, error)
 	createSession(ctx context.Context, userID *uuid.UUID, userAgent *string, userIP *string) (*Tokens, error)
 	GetOneByID(ctx context.Context, id uuid.UUID) (*domain.User, error)
-	UpdateUserInfo(ctx context.Context, userID uuid.UUID, cityID uuid.UUID, groupType domain.GroupTypeList) error
+	UpdateUserInfo(ctx context.Context, userID uuid.UUID, cityID uuid.UUID, groups domain.GroupTypeList) error
+	UpdateUserGroups(ctx context.Context, userID uuid.UUID, groups domain.UserGroupList) error
 }
 
 type Cities interface {

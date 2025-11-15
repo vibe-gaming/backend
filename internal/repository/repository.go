@@ -29,8 +29,9 @@ type Users interface {
 	GetByExternalID(ctx context.Context, esiaOID string) (*domain.User, error)
 	Create(ctx context.Context, user *domain.User) error
 	GetOneByID(ctx context.Context, id uuid.UUID) (*domain.User, error)
-	UpdateUserInfo(ctx context.Context, userID uuid.UUID, cityID uuid.UUID, groupType domain.GroupTypeList) error
+	UpdateUserInfo(ctx context.Context, userID uuid.UUID, cityID uuid.UUID, groups domain.UserGroupList) error
 	UpdateRegisteredAt(ctx context.Context, userID uuid.UUID) error
+	UpdateUserGroups(ctx context.Context, userID uuid.UUID, groups domain.UserGroupList) error
 }
 
 type RefreshSession interface {

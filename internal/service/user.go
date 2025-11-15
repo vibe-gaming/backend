@@ -10,10 +10,14 @@ import (
 	"github.com/vibe-gaming/backend/internal/config"
 	"github.com/vibe-gaming/backend/internal/domain"
 	"github.com/vibe-gaming/backend/internal/esia"
+	"github.com/vibe-gaming/backend/internal/queue/client"
+	"github.com/vibe-gaming/backend/internal/queue/task"
 	"github.com/vibe-gaming/backend/internal/repository"
 	"github.com/vibe-gaming/backend/pkg/auth"
 	"github.com/vibe-gaming/backend/pkg/hash"
+	"github.com/vibe-gaming/backend/pkg/logger"
 	"github.com/vibe-gaming/backend/pkg/otp"
+	"go.uber.org/zap"
 
 	"github.com/google/uuid"
 )
@@ -178,7 +182,7 @@ func (s *userService) GetOneByID(ctx context.Context, id uuid.UUID) (*domain.Use
 	return s.userRepository.GetOneByID(ctx, id)
 }
 
-func (s *userService) UpdateUserInfo(ctx context.Context, userID uuid.UUID, cityID uuid.UUID, groupType domain.GroupTypeList) error {
+func (s *userService) UpdateUserInfo(ctx context.Context, userID uuid.UUID, cityID uuid.UUID, groups domain.GroupTypeList) error {
 	if _, err := s.cityRepository.GetOneByID(ctx, cityID); err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
 			return ErrCityNotFound
@@ -186,10 +190,60 @@ func (s *userService) UpdateUserInfo(ctx context.Context, userID uuid.UUID, city
 		return fmt.Errorf("get city by id failed: %w", err)
 	}
 
+	user, err := s.userRepository.GetOneByID(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("get user by id failed: %w", err)
+	}
+
 	// TODO: add transaction
 	if err := s.userRepository.UpdateRegisteredAt(ctx, userID); err != nil {
 		return fmt.Errorf("update registered at failed: %w", err)
 	}
 
-	return s.userRepository.UpdateUserInfo(ctx, userID, cityID, groupType)
+	groupsList := make(domain.UserGroupList, len(groups))
+	for i, group := range groups {
+		for _, userGroup := range user.GroupType {
+			if userGroup.Type == group {
+				// skip
+				continue
+			}
+		}
+
+		groupsList[i] = domain.UserGroup{
+			Type:   group,
+			Status: domain.VerificationStatusPending,
+		}
+	}
+
+	err = s.userRepository.UpdateUserInfo(ctx, userID, cityID, groupsList)
+	if err != nil {
+		return fmt.Errorf("update user info failed: %w", err)
+	}
+
+	// Запускаем асинхронную задачу для проверки социальных групп
+	if user.SNILS.Valid && len(groups) > 0 {
+		groupTypes := make([]string, len(groups))
+		for i, g := range groups {
+			groupTypes[i] = string(g)
+		}
+
+		asynqClient := client.GetClient(ctx)
+		if asynqClient != nil {
+			checkTask, err := task.NewCheckSocialGroupTask(userID, user.SNILS.String, groupTypes)
+			if err != nil {
+				// Логируем ошибку, но не возвращаем её, чтобы не прерывать основной процесс
+				logger.Error("failed to create check social group task", zap.Error(err))
+			} else {
+				if _, err := asynqClient.Enqueue(checkTask); err != nil {
+					logger.Error("failed to enqueue check social group task", zap.Error(err))
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func (s *userService) UpdateUserGroups(ctx context.Context, userID uuid.UUID, groups domain.UserGroupList) error {
+	return s.userRepository.UpdateUserGroups(ctx, userID, groups)
 }

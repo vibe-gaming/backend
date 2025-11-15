@@ -25,8 +25,32 @@ const (
 
 type GroupTypeList []GroupType
 
+// Статус подтверждения группы
+type VerificationStatus string
+
+const (
+	VerificationStatusPending  VerificationStatus = "pending"  // Ожидает подтверждения
+	VerificationStatusVerified VerificationStatus = "verified" // Подтверждена
+	VerificationStatusRejected VerificationStatus = "rejected" // Отклонена
+	VerificationStatusExpired  VerificationStatus = "expired"  // Истекла
+)
+
+// Группа пользователя со статусом подтверждения
+type UserGroup struct {
+	Type         GroupType          `json:"type"`
+	Status       VerificationStatus `json:"status"`
+	VerifiedAt   *time.Time         `json:"verified_at,omitempty"`   // Когда подтверждена
+	RejectedAt   *time.Time         `json:"rejected_at,omitempty"`   // Когда отклонена
+	ExpiresAt    *time.Time         `json:"expires_at,omitempty"`    // Когда истекает
+	ExternalID   string             `json:"external_id,omitempty"`   // ID из внешнего API
+	ErrorMessage string             `json:"error_message,omitempty"` // Сообщение об ошибке
+}
+
+// Список групп со статусами
+type UserGroupList []UserGroup
+
 // Value реализует интерфейс driver.Valuer для сохранения в БД
-func (g GroupTypeList) Value() (driver.Value, error) {
+func (g UserGroupList) Value() (driver.Value, error) {
 	if g == nil {
 		return nil, nil
 	}
@@ -34,7 +58,7 @@ func (g GroupTypeList) Value() (driver.Value, error) {
 }
 
 // Scan реализует интерфейс sql.Scanner для чтения из БД
-func (g *GroupTypeList) Scan(value interface{}) error {
+func (g *UserGroupList) Scan(value interface{}) error {
 	if value == nil {
 		*g = nil
 		return nil
@@ -47,7 +71,7 @@ func (g *GroupTypeList) Scan(value interface{}) error {
 	case string:
 		bytes = []byte(v)
 	default:
-		return fmt.Errorf("unsupported type for GroupTypeList: %T", value)
+		return fmt.Errorf("unsupported type for UserGroupList: %T", value)
 	}
 
 	return json.Unmarshal(bytes, g)
@@ -63,7 +87,7 @@ type User struct {
 	Email       sql.NullString `db:"email" json:"email"`
 	PhoneNumber sql.NullString `db:"phone_number" json:"phone_number"`
 	CityID      *uuid.UUID     `db:"city_id" json:"city_id"`
-	GroupType   GroupTypeList  `db:"group_type" json:"group_type"`
+	GroupType   UserGroupList  `db:"group_type" json:"group_type"`
 
 	CreatedAt    time.Time  `db:"created_at" json:"created_at"`
 	UpdatedAt    time.Time  `db:"updated_at" json:"updated_at"`

@@ -271,7 +271,7 @@ type getProfileResponse struct {
 	Email        *string              `json:"email" binding:"omitempty"`
 	PhoneNumber  *string              `json:"phone_number" binding:"omitempty"`
 	CityID       *uuid.UUID           `json:"city_id" binding:"omitempty"`
-	GroupType    domain.GroupTypeList `json:"group_type" binding:"omitempty"`
+	Groups       domain.UserGroupList `json:"groups" binding:"omitempty"`
 	RegisteredAt *time.Time           `json:"registered_at" binding:"omitempty"`
 }
 
@@ -311,7 +311,7 @@ func (h *Handler) getProfile(c *gin.Context) {
 		Email:        &user.Email.String,
 		PhoneNumber:  &user.PhoneNumber.String,
 		CityID:       user.CityID,
-		GroupType:    user.GroupType,
+		Groups:       user.GroupType,
 		RegisteredAt: user.RegisteredAt,
 	}
 
@@ -319,8 +319,8 @@ func (h *Handler) getProfile(c *gin.Context) {
 }
 
 type userUpdateInfoRequest struct {
-	CityID    uuid.UUID            `json:"city_id" binding:"required"`
-	GroupType domain.GroupTypeList `json:"group_type" binding:"required"`
+	CityID uuid.UUID            `json:"city_id" binding:"required"`
+	Groups domain.GroupTypeList `json:"groups" binding:"required"`
 }
 
 // @Summary User Update Info
@@ -349,7 +349,7 @@ func (h *Handler) userUpdateInfo(c *gin.Context) {
 		return
 	}
 
-	if err := h.services.Users.UpdateUserInfo(c.Request.Context(), userID, req.CityID, req.GroupType); err != nil {
+	if err := h.services.Users.UpdateUserInfo(c.Request.Context(), userID, req.CityID, req.Groups); err != nil {
 		if errors.Is(err, service.ErrCityNotFound) {
 			errorResponse(c, CityNotFoundErrorCode)
 			return

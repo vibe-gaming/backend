@@ -79,7 +79,7 @@ func (r *userRepository) Create(ctx context.Context, user *domain.User) error {
 
 func (r *userRepository) GetOneByID(ctx context.Context, id uuid.UUID) (*domain.User, error) {
 	const query = `
-	SELECT id, external_id, first_name, last_name, middle_name, snils, email, phone_number, city_id, group_type, created_at, updated_at, deleted_at FROM user WHERE id = uuid_to_bin(?);
+	SELECT id, external_id, first_name, last_name, middle_name, snils, email, phone_number, city_id, group_type, registered_at, created_at, updated_at, deleted_at FROM user WHERE id = uuid_to_bin(?);
 	`
 	var user domain.User
 	if err := r.db.GetContext(ctx, &user, query, id); err != nil {
@@ -91,11 +91,11 @@ func (r *userRepository) GetOneByID(ctx context.Context, id uuid.UUID) (*domain.
 	return &user, nil
 }
 
-func (r *userRepository) UpdateUserInfo(ctx context.Context, userID uuid.UUID, cityID uuid.UUID, groupType domain.GroupTypeList) error {
+func (r *userRepository) UpdateUserInfo(ctx context.Context, userID uuid.UUID, cityID uuid.UUID, groups domain.UserGroupList) error {
 	const query = `
 	UPDATE user SET city_id = uuid_to_bin(?), group_type = ? WHERE id = uuid_to_bin(?);
 	`
-	_, err := r.db.ExecContext(ctx, query, cityID, groupType, userID)
+	_, err := r.db.ExecContext(ctx, query, cityID, groups, userID)
 	if err != nil {
 		return fmt.Errorf("update user by id failed: %w", err)
 	}
@@ -109,6 +109,17 @@ func (r *userRepository) UpdateRegisteredAt(ctx context.Context, userID uuid.UUI
 	_, err := r.db.ExecContext(ctx, query, userID)
 	if err != nil {
 		return fmt.Errorf("update user by id failed: %w", err)
+	}
+	return nil
+}
+
+func (r *userRepository) UpdateUserGroups(ctx context.Context, userID uuid.UUID, groups domain.UserGroupList) error {
+	const query = `
+	UPDATE user SET group_type = ? WHERE id = uuid_to_bin(?);
+	`
+	_, err := r.db.ExecContext(ctx, query, groups, userID)
+	if err != nil {
+		return fmt.Errorf("update user groups by id failed: %w", err)
 	}
 	return nil
 }
