@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/vibe-gaming/backend/internal/db"
 	"github.com/vibe-gaming/backend/internal/domain"
 
@@ -73,5 +74,30 @@ func (r *userRepository) Create(ctx context.Context, user *domain.User) error {
 		return domain.ErrNoRowsAffected
 	}
 
+	return nil
+}
+
+func (r *userRepository) GetOneByID(ctx context.Context, id uuid.UUID) (*domain.User, error) {
+	const query = `
+	SELECT id, external_id, first_name, last_name, middle_name, snils, email, phone_number, city_id, group_type, created_at, updated_at, deleted_at FROM user WHERE id = uuid_to_bin(?);
+	`
+	var user domain.User
+	if err := r.db.GetContext(ctx, &user, query, id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, domain.ErrNotFound
+		}
+		return nil, fmt.Errorf("select from user by id failed: %w", err)
+	}
+	return &user, nil
+}
+
+func (r *userRepository) CompleteRegistration(ctx context.Context, userID uuid.UUID, cityID uuid.UUID, groupType domain.GroupTypeList) error {
+	const query = `
+	UPDATE user SET city_id = uuid_to_bin(?), group_type = ? WHERE id = uuid_to_bin(?);
+	`
+	_, err := r.db.ExecContext(ctx, query, cityID, groupType, userID)
+	if err != nil {
+		return fmt.Errorf("update user by id failed: %w", err)
+	}
 	return nil
 }

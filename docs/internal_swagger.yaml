@@ -7,6 +7,43 @@ definitions:
       ErrorMessage:
         type: string
     type: object
+<<<<<<< HEAD
+  domain.City:
+    properties:
+      created_at:
+        type: string
+      deleted_at:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      region_id:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  domain.GroupType:
+    enum:
+    - pensioners
+    - disabled
+    - young_families
+    - low_income
+    - students
+    - large_families
+    - children
+    - veterans
+    type: string
+    x-enum-varnames:
+    - Pensioners
+    - Disabled
+    - YoungFamilies
+    - LowIncome
+    - Students
+    - LargeFamilies
+    - Children
+    - Veterans
+=======
   v1.benefitResponse:
     properties:
       city_id:
@@ -47,6 +84,7 @@ definitions:
           $ref: '#/definitions/v1.benefitResponse'
         type: array
     type: object
+>>>>>>> main
   v1.exchangeTokenRequest:
     properties:
       code:
@@ -62,23 +100,73 @@ definitions:
       access_token:
         type: string
     type: object
+  v1.getProfileResponse:
+    properties:
+      city_id:
+        type: string
+      email:
+        type: string
+      external_id:
+        type: string
+      first_name:
+        type: string
+      group_type:
+        items:
+          $ref: '#/definitions/domain.GroupType'
+        type: array
+      id:
+        type: string
+      last_name:
+        type: string
+      middle_name:
+        type: string
+      phone_number:
+        type: string
+      snils:
+        type: string
+    type: object
+  v1.userUpdateInfoRequest:
+    properties:
+      city_id:
+        type: string
+      group_type:
+        items:
+          $ref: '#/definitions/domain.GroupType'
+        type: array
+    required:
+    - city_id
+    - group_type
+    type: object
 info:
   contact: {}
   description: Backend API
   title: Backend API
   version: "1.0"
 paths:
+<<<<<<< HEAD
+  /cities:
+    get:
+      consumes:
+      - application/json
+      description: Get all cities
+=======
   /benefits:
     get:
       consumes:
       - application/json
       description: Получить список всех льгот
+>>>>>>> main
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
+<<<<<<< HEAD
+            items:
+              $ref: '#/definitions/domain.City'
+            type: array
+=======
             $ref: '#/definitions/v1.benefitsListResponse'
         "500":
           description: Internal Server Error
@@ -105,21 +193,31 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/v1.benefitResponse'
+>>>>>>> main
         "400":
           description: Bad Request
           schema:
             $ref: '#/definitions/ErrorStruct'
+<<<<<<< HEAD
+=======
         "404":
           description: Not Found
           schema:
             $ref: '#/definitions/ErrorStruct'
+>>>>>>> main
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/ErrorStruct'
+<<<<<<< HEAD
+      summary: Get Cities
+      tags:
+      - Cities
+=======
       summary: Get Benefit By ID
       tags:
       - Benefits
+>>>>>>> main
   /users/auth/callback:
     get:
       consumes:
@@ -209,6 +307,57 @@ paths:
       summary: Pong
       tags:
       - Pong
+  /users/profile:
+    get:
+      consumes:
+      - application/json
+      description: Get user profile
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.getProfileResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+      security:
+      - UserAuth: []
+      summary: Get Profile
+      tags:
+      - Users
+  /users/update-info:
+    post:
+      consumes:
+      - application/json
+      description: Register user
+      parameters:
+      - description: User update info request
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/v1.userUpdateInfoRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+      security:
+      - UserAuth: []
+      summary: User Update Info
+      tags:
+      - Users
 securityDefinitions:
   AdminAuth:
     in: header

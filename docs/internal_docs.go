@@ -16,9 +16,15 @@ const docTemplateinternal = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+<<<<<<< HEAD
+        "/cities": {
+            "get": {
+                "description": "Get all cities",
+=======
         "/benefits": {
             "get": {
                 "description": "Получить список всех льгот",
+>>>>>>> main
                 "consumes": [
                     "application/json"
                 ],
@@ -26,13 +32,25 @@ const docTemplateinternal = `{
                     "application/json"
                 ],
                 "tags": [
+<<<<<<< HEAD
+                    "Cities"
+                ],
+                "summary": "Get Cities",
+=======
                     "Benefits"
                 ],
                 "summary": "Get Benefits List",
+>>>>>>> main
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
+<<<<<<< HEAD
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/domain.City"
+                            }
+=======
                             "$ref": "#/definitions/v1.benefitsListResponse"
                         }
                     },
@@ -72,6 +90,7 @@ const docTemplateinternal = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/v1.benefitResponse"
+>>>>>>> main
                         }
                     },
                     "400": {
@@ -80,12 +99,15 @@ const docTemplateinternal = `{
                             "$ref": "#/definitions/ErrorStruct"
                         }
                     },
+<<<<<<< HEAD
+=======
                     "404": {
                         "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/ErrorStruct"
                         }
                     },
+>>>>>>> main
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -230,6 +252,88 @@ const docTemplateinternal = `{
                     }
                 }
             }
+        },
+        "/users/profile": {
+            "get": {
+                "security": [
+                    {
+                        "UserAuth": []
+                    }
+                ],
+                "description": "Get user profile",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Get Profile",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v1.getProfileResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/update-info": {
+            "post": {
+                "security": [
+                    {
+                        "UserAuth": []
+                    }
+                ],
+                "description": "Register user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "User Update Info",
+                "parameters": [
+                    {
+                        "description": "User update info request",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v1.userUpdateInfoRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -244,6 +348,15 @@ const docTemplateinternal = `{
                 }
             }
         },
+<<<<<<< HEAD
+        "domain.City": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "deleted_at": {
+=======
         "v1.benefitResponse": {
             "type": "object",
             "properties": {
@@ -254,20 +367,29 @@ const docTemplateinternal = `{
                     "type": "string"
                 },
                 "how_to_use": {
+>>>>>>> main
                     "type": "string"
                 },
                 "id": {
                     "type": "string"
                 },
+<<<<<<< HEAD
+                "name": {
+                    "type": "string"
+=======
                 "latitude": {
                     "type": "number"
                 },
                 "longitude": {
                     "type": "number"
+>>>>>>> main
                 },
                 "region_id": {
                     "type": "string"
                 },
+<<<<<<< HEAD
+                "updated_at": {
+=======
                 "requirement": {
                     "type": "string"
                 },
@@ -290,10 +412,35 @@ const docTemplateinternal = `{
                     "type": "string"
                 },
                 "valid_to": {
+>>>>>>> main
                     "type": "string"
                 }
             }
         },
+<<<<<<< HEAD
+        "domain.GroupType": {
+            "type": "string",
+            "enum": [
+                "pensioners",
+                "disabled",
+                "young_families",
+                "low_income",
+                "students",
+                "large_families",
+                "children",
+                "veterans"
+            ],
+            "x-enum-varnames": [
+                "Pensioners",
+                "Disabled",
+                "YoungFamilies",
+                "LowIncome",
+                "Students",
+                "LargeFamilies",
+                "Children",
+                "Veterans"
+            ]
+=======
         "v1.benefitsListResponse": {
             "type": "object",
             "properties": {
@@ -304,6 +451,7 @@ const docTemplateinternal = `{
                     }
                 }
             }
+>>>>>>> main
         },
         "v1.exchangeTokenRequest": {
             "type": "object",
@@ -325,6 +473,62 @@ const docTemplateinternal = `{
             "properties": {
                 "access_token": {
                     "type": "string"
+                }
+            }
+        },
+        "v1.getProfileResponse": {
+            "type": "object",
+            "properties": {
+                "city_id": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "external_id": {
+                    "type": "string"
+                },
+                "first_name": {
+                    "type": "string"
+                },
+                "group_type": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.GroupType"
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "last_name": {
+                    "type": "string"
+                },
+                "middle_name": {
+                    "type": "string"
+                },
+                "phone_number": {
+                    "type": "string"
+                },
+                "snils": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.userUpdateInfoRequest": {
+            "type": "object",
+            "required": [
+                "city_id",
+                "group_type"
+            ],
+            "properties": {
+                "city_id": {
+                    "type": "string"
+                },
+                "group_type": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.GroupType"
+                    }
                 }
             }
         }

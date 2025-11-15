@@ -13,6 +13,9 @@ const (
 	UserRefreshTokenCookieNotFoundMessage = "user refresh token cookie not found"
 	UserRefreshTokenExpiredCode           = 1004
 	UserRefreshTokenExpiredMessage        = "user refresh token expired"
+
+	CityNotFoundErrorCode    = 1005
+	CityNotFoundErrorMessage = "city not found"
 )
 
 type ErrorCode int
@@ -53,6 +56,9 @@ func getErrorStruct(code ErrorCode) *ErrorStruct {
 	case UserRefreshTokenExpiredCode:
 		errorStruct.ErrorCode = UserRefreshTokenExpiredCode
 		errorStruct.ErrorMessage = UserRefreshTokenExpiredMessage
+	case CityNotFoundErrorCode:
+		errorStruct.ErrorCode = CityNotFoundErrorCode
+		errorStruct.ErrorMessage = CityNotFoundErrorMessage
 	}
 
 	return errorStruct
