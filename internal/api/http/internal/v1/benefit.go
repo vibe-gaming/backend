@@ -27,15 +27,20 @@ type benefitResponse struct {
 	Description  string   `json:"description"`
 	ValidFrom    string   `json:"valid_from"`
 	ValidTo      string   `json:"valid_to"`
+	CreatedAt    string   `json:"created_at"`
+	UpdatedAt    string   `json:"updated_at"`
 	Type         string   `json:"type"`
 	TargetGroups []string `json:"target_groups"`
 	Longitude    *float64 `json:"longitude,omitempty"`
 	Latitude     *float64 `json:"latitude,omitempty"`
 	CityID       *string  `json:"city_id,omitempty"`
 	Region       []int    `json:"region"`
+	Category     *string  `json:"category,omitempty"`
 	Requirement  string   `json:"requirement"`
 	HowToUse     *string  `json:"how_to_use,omitempty"`
 	SourceURL    string   `json:"source_url"`
+	Tags         []string `json:"tags"`
+	Views        int      `json:"views"`
 }
 
 type benefitsListResponse struct {
@@ -67,10 +72,14 @@ type benefitsListResponse struct {
 // @Param region query int false "ID региона для фильтрации"
 // @Param city_id query string false "UUID города для фильтрации"
 // @Param type query string false "Тип льготы (federal, regional, commercial)"
-// @Param target_groups query string false "Целевые группы через запятой (pensioners, disabled, students и т.д.)"
+// @Param target_groups query string false "Целевые группы через запятую (pensioners, disabled, students и т.д.)"
+// @Param tags query string false "Теги через запятую (most_popular, new, hot, best, recommended, popular, top)"
+// @Param categories query string false "Категории через запятую (medicine, transport, food, clothing, other)"
 // @Param date_from query string false "Дата начала периода (YYYY-MM-DD)"
 // @Param date_to query string false "Дата окончания периода (YYYY-MM-DD)"
 // @Param search query string false "Поисковый запрос (автоматически ищет по частичному совпадению)"
+// @Param sort_by query string false "Поле для сортировки (created_at, views, updated_at) - по умолчанию created_at"
+// @Param order query string false "Направление сортировки (asc, desc) - по умолчанию desc"
 // @Success 200 {object} benefitsListResponse
 // @Failure 400 {object} ErrorStruct
 // @Failure 500 {object} ErrorStruct
@@ -117,6 +126,24 @@ func (h *Handler) getBenefitsList(c *gin.Context) {
 		filters.TargetGroups = groups
 	}
 
+	if tagsStr := c.Query("tags"); tagsStr != "" {
+		// Разделяем по запятой и убираем пробелы
+		tags := strings.Split(tagsStr, ",")
+		for i, tag := range tags {
+			tags[i] = strings.TrimSpace(tag)
+		}
+		filters.Tags = tags
+	}
+
+	if categoriesStr := c.Query("categories"); categoriesStr != "" {
+		// Разделяем по запятой и убираем пробелы
+		categories := strings.Split(categoriesStr, ",")
+		for i, category := range categories {
+			categories[i] = strings.TrimSpace(category)
+		}
+		filters.Categories = categories
+	}
+
 	if dateFrom := c.Query("date_from"); dateFrom != "" {
 		filters.DateFrom = &dateFrom
 	}
@@ -127,6 +154,33 @@ func (h *Handler) getBenefitsList(c *gin.Context) {
 
 	if search := c.Query("search"); search != "" {
 		filters.Search = &search
+	}
+
+	// Параметры сортировки
+	sortBy := c.Query("sort_by")
+	if sortBy != "" {
+		// Валидация допустимых значений
+		switch sortBy {
+		case "created_at", "views", "updated_at":
+			filters.SortBy = sortBy
+		default:
+			filters.SortBy = "created_at"
+		}
+	} else {
+		filters.SortBy = "created_at"
+	}
+
+	order := c.Query("order")
+	if order != "" {
+		// Валидация допустимых значений
+		switch strings.ToLower(order) {
+		case "asc", "desc":
+			filters.Order = strings.ToLower(order)
+		default:
+			filters.Order = "desc"
+		}
+	} else {
+		filters.Order = "desc"
 	}
 
 	benefits, total, err := h.services.Benefits.GetAll(c.Request.Context(), page, limit, filters)
@@ -155,21 +209,37 @@ func (h *Handler) getBenefitsList(c *gin.Context) {
 			cityID = &cityIDStr
 		}
 
+		var category *string
+		if benefit.Category != nil {
+			categoryStr := string(*benefit.Category)
+			category = &categoryStr
+		}
+
+		tags := make([]string, 0, len(benefit.Tags))
+		for _, tag := range benefit.Tags {
+			tags = append(tags, string(tag))
+		}
+
 		response.Benefits = append(response.Benefits, benefitResponse{
 			ID:           benefit.ID.String(),
 			Title:        benefit.Title,
 			Description:  benefit.Description,
 			ValidFrom:    benefit.ValidFrom.Format("2006-01-02"),
 			ValidTo:      benefit.ValidTo.Format("2006-01-02"),
-			Type:         benefit.Type,
+			CreatedAt:    benefit.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			UpdatedAt:    benefit.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			Type:         string(benefit.Type),
 			TargetGroups: targetGroups,
 			Longitude:    benefit.Longitude,
 			Latitude:     benefit.Latitude,
 			CityID:       cityID,
 			Region:       benefit.Region,
+			Category:     category,
 			Requirement:  benefit.Requirement,
 			HowToUse:     benefit.HowToUse,
 			SourceURL:    benefit.SourceURL,
+			Tags:         tags,
+			Views:        benefit.Views,
 		})
 	}
 
@@ -219,21 +289,37 @@ func (h *Handler) getBenefitByID(c *gin.Context) {
 		cityID = &cityIDStr
 	}
 
+	var category *string
+	if benefit.Category != nil {
+		categoryStr := string(*benefit.Category)
+		category = &categoryStr
+	}
+
+	tags := make([]string, 0, len(benefit.Tags))
+	for _, tag := range benefit.Tags {
+		tags = append(tags, string(tag))
+	}
+
 	response := benefitResponse{
 		ID:           benefit.ID.String(),
 		Title:        benefit.Title,
 		Description:  benefit.Description,
 		ValidFrom:    benefit.ValidFrom.Format("2006-01-02"),
 		ValidTo:      benefit.ValidTo.Format("2006-01-02"),
-		Type:         benefit.Type,
+		CreatedAt:    benefit.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt:    benefit.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		Type:         string(benefit.Type),
 		TargetGroups: targetGroups,
 		Longitude:    benefit.Longitude,
 		Latitude:     benefit.Latitude,
 		CityID:       cityID,
 		Region:       benefit.Region,
+		Category:     category,
 		Requirement:  benefit.Requirement,
 		HowToUse:     benefit.HowToUse,
 		SourceURL:    benefit.SourceURL,
+		Tags:         tags,
+		Views:        benefit.Views,
 	}
 
 	c.JSON(http.StatusOK, response)

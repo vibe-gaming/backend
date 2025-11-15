@@ -14,10 +14,14 @@ type BenefitFilters struct {
 	CityID       *string
 	Type         *string
 	TargetGroups []string
+	Tags         []string
+	Categories   []string
 	DateFrom     *string
 	DateTo       *string
 	Search       *string
 	SearchMode   string // "natural" или "boolean"
+	SortBy       string // "created_at", "views", "updated_at"
+	Order        string // "asc", "desc"
 }
 
 type BenefitRepository interface {
@@ -41,10 +45,10 @@ func NewBenefitRepository(db *sqlx.DB) BenefitRepository {
 
 func (r *benefitRepository) Create(ctx context.Context, benefit *domain.Benefit) error {
 	const query = `
-	INSERT INTO benefit (id, title, description, valid_from, valid_to, created_at, updated_at, deleted_at, type, target_group_ids, longitude, latitude, city_id, region, requirment, how_to_use, source_url)
-	VALUES (uuid_to_bin(?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, uuid_to_bin(?), ?, ?, ?, ?);
+	INSERT INTO benefit (id, title, description, valid_from, valid_to, created_at, updated_at, deleted_at, type, target_group_ids, longitude, latitude, city_id, region, category, requirment, how_to_use, source_url, tags, views)
+	VALUES (uuid_to_bin(?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, uuid_to_bin(?), ?, ?, ?, ?, ?, ?, ?);
 	`
-	_, err := r.db.ExecContext(ctx, query, benefit.ID, benefit.Title, benefit.Description, benefit.ValidFrom, benefit.ValidTo, benefit.CreatedAt, benefit.UpdatedAt, benefit.DeletedAt, benefit.Type, benefit.TargetGroupIDs, benefit.Longitude, benefit.Latitude, benefit.CityID, benefit.Region, benefit.Requirement, benefit.HowToUse, benefit.SourceURL)
+	_, err := r.db.ExecContext(ctx, query, benefit.ID, benefit.Title, benefit.Description, benefit.ValidFrom, benefit.ValidTo, benefit.CreatedAt, benefit.UpdatedAt, benefit.DeletedAt, benefit.Type, benefit.TargetGroupIDs, benefit.Longitude, benefit.Latitude, benefit.CityID, benefit.Region, benefit.Category, benefit.Requirement, benefit.HowToUse, benefit.SourceURL, benefit.Tags, benefit.Views)
 	if err != nil {
 		return fmt.Errorf("db insert benefit: %w", err)
 	}
@@ -67,9 +71,12 @@ func (r *benefitRepository) GetByID(ctx context.Context, id string) (*domain.Ben
 			latitude,
 			bin_to_uuid(city_id) as city_id,
 			region,
+			category,
 			requirment,
 			how_to_use,
-			source_url
+			source_url,
+			tags,
+			views
 		FROM benefit
 		WHERE id = uuid_to_bin(?) AND deleted_at IS NULL
 	`
@@ -101,9 +108,12 @@ func (r *benefitRepository) GetAll(ctx context.Context, limit, offset int, filte
 			latitude,
 			bin_to_uuid(city_id) as city_id,
 			region,
+			category,
 			requirment,
 			how_to_use,
-			source_url
+			source_url,
+			tags,
+			views
 		FROM benefit
 		WHERE deleted_at IS NULL`
 
@@ -142,6 +152,32 @@ func (r *benefitRepository) GetAll(ctx context.Context, limit, offset int, filte
 			query += `)`
 		}
 
+		// Фильтр по тегам (хотя бы один тег должен совпадать)
+		if len(filters.Tags) > 0 {
+			query += ` AND (`
+			for i, tag := range filters.Tags {
+				if i > 0 {
+					query += ` OR `
+				}
+				query += `JSON_CONTAINS(tags, ?)`
+				args = append(args, fmt.Sprintf(`"%s"`, tag))
+			}
+			query += `)`
+		}
+
+		// Фильтр по категориям (хотя бы одна категория должна совпадать)
+		if len(filters.Categories) > 0 {
+			query += ` AND (`
+			for i, category := range filters.Categories {
+				if i > 0 {
+					query += ` OR `
+				}
+				query += `category = ?`
+				args = append(args, category)
+			}
+			query += `)`
+		}
+
 		// Фильтр по датам (льгота должна быть активна в указанном периоде)
 		if filters.DateFrom != nil {
 			query += ` AND valid_to >= ?`
@@ -164,9 +200,34 @@ func (r *benefitRepository) GetAll(ctx context.Context, limit, offset int, filte
 		}
 	}
 
-	query += `
-		ORDER BY created_at DESC
-		LIMIT ? OFFSET ?`
+	// Сортировка
+	orderBy := "created_at"
+	orderDir := "DESC"
+
+	if filters != nil {
+		// Определяем поле для сортировки
+		switch filters.SortBy {
+		case "views":
+			orderBy = "views"
+		case "updated_at":
+			orderBy = "updated_at"
+		case "created_at":
+			orderBy = "created_at"
+		default:
+			orderBy = "created_at"
+		}
+
+		// Определяем направление сортировки
+		if filters.Order == "asc" {
+			orderDir = "ASC"
+		} else {
+			orderDir = "DESC"
+		}
+	}
+
+	query += fmt.Sprintf(`
+		ORDER BY %s %s
+		LIMIT ? OFFSET ?`, orderBy, orderDir)
 
 	args = append(args, limit, offset)
 
@@ -219,6 +280,32 @@ func (r *benefitRepository) Count(ctx context.Context, filters *BenefitFilters) 
 			query += `)`
 		}
 
+		// Фильтр по тегам
+		if len(filters.Tags) > 0 {
+			query += ` AND (`
+			for i, tag := range filters.Tags {
+				if i > 0 {
+					query += ` OR `
+				}
+				query += `JSON_CONTAINS(tags, ?)`
+				args = append(args, fmt.Sprintf(`"%s"`, tag))
+			}
+			query += `)`
+		}
+
+		// Фильтр по категориям
+		if len(filters.Categories) > 0 {
+			query += ` AND (`
+			for i, category := range filters.Categories {
+				if i > 0 {
+					query += ` OR `
+				}
+				query += `category = ?`
+				args = append(args, category)
+			}
+			query += `)`
+		}
+
 		// Фильтр по датам
 		if filters.DateFrom != nil {
 			query += ` AND valid_to >= ?`
@@ -264,12 +351,15 @@ func (r *benefitRepository) Update(ctx context.Context, benefit *domain.Benefit)
 			latitude = ?,
 			city_id = uuid_to_bin(?),
 			region = ?,
+			category = ?,
 			requirment = ?,
 			how_to_use = ?,
-			source_url = ?
+			source_url = ?,
+			tags = ?,
+			views = ?
 		WHERE id = uuid_to_bin(?)
 	`
-	_, err := r.db.ExecContext(ctx, query, benefit.Title, benefit.Description, benefit.ValidFrom, benefit.ValidTo, benefit.UpdatedAt, benefit.DeletedAt, benefit.Type, benefit.TargetGroupIDs, benefit.Longitude, benefit.Latitude, benefit.CityID, benefit.Region, benefit.Requirement, benefit.HowToUse, benefit.SourceURL, benefit.ID)
+	_, err := r.db.ExecContext(ctx, query, benefit.Title, benefit.Description, benefit.ValidFrom, benefit.ValidTo, benefit.UpdatedAt, benefit.DeletedAt, benefit.Type, benefit.TargetGroupIDs, benefit.Longitude, benefit.Latitude, benefit.CityID, benefit.Region, benefit.Category, benefit.Requirement, benefit.HowToUse, benefit.SourceURL, benefit.Tags, benefit.Views, benefit.ID)
 	if err != nil {
 		return fmt.Errorf("db update benefit: %w", err)
 	}
