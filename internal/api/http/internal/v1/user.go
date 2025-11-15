@@ -93,6 +93,8 @@ func (h *Handler) authLogin(c *gin.Context) {
 	c.Redirect(http.StatusFound, authURL)
 }
 
+const frontendRedirectPath = "frontendUrl/login/callback"
+
 // @Summary OAuth Callback
 // @Tags Auth
 // @Description Callback endpoint для Auth - получает code от ESIA и редиректит на фронтенд
@@ -110,7 +112,7 @@ func (h *Handler) authCallback(c *gin.Context) {
 
 	if code == "" {
 		logger.Error("code is empty")
-		frontendURL := fmt.Sprintf("%s/auth/error?error=no_code", h.config.FrontendURL)
+		frontendURL := fmt.Sprintf("%s/%s/error?error=no_code", h.config.FrontendURL, frontendRedirectPath)
 		c.Redirect(http.StatusFound, frontendURL)
 		return
 	}
@@ -119,7 +121,7 @@ func (h *Handler) authCallback(c *gin.Context) {
 	savedState, err := c.Cookie("esia_state")
 	if err != nil || savedState != state {
 		logger.Error("invalid state", zap.String("saved", savedState), zap.String("received", state))
-		frontendURL := fmt.Sprintf("%s/auth/error?error=invalid_state", h.config.FrontendURL)
+		frontendURL := fmt.Sprintf("%s/%s/error?error=invalid_state", h.config.FrontendURL, frontendRedirectPath)
 		c.Redirect(http.StatusFound, frontendURL)
 		return
 	}
@@ -127,7 +129,7 @@ func (h *Handler) authCallback(c *gin.Context) {
 	// Проверяем, что state существует в нашем хранилище
 	if !stateStore[state] {
 		logger.Error("state not found in store")
-		frontendURL := fmt.Sprintf("%s/auth/error?error=state_not_found", h.config.FrontendURL)
+		frontendURL := fmt.Sprintf("%s/%s/error?error=state_not_found", h.config.FrontendURL, frontendRedirectPath)
 		c.Redirect(http.StatusFound, frontendURL)
 		return
 	}
@@ -146,8 +148,9 @@ func (h *Handler) authCallback(c *gin.Context) {
 	// Редиректим на фронтенд с code и state
 	// Токены НЕ передаются в URL - это безопасно!
 	frontendURL := fmt.Sprintf(
-		"%s/auth/callback?code=%s&state=%s",
+		"%s/%s/?code=%s&state=%s",
 		h.config.FrontendURL,
+		frontendRedirectPath,
 		code,
 		state,
 	)
