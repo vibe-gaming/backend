@@ -266,6 +266,15 @@ paths:
         in: query
         name: search
         type: string
+      - description: Поле для сортировки (created_at, views, updated_at) - по умолчанию
+          created_at
+        in: query
+        name: sort_by
+        type: string
+      - description: Направление сортировки (asc, desc) - по умолчанию desc
+        in: query
+        name: order
+        type: string
       produces:
       - application/json
       responses:

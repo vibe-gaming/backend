@@ -94,6 +94,18 @@ const docTemplateinternal = `{
                         "description": "Поисковый запрос (автоматически ищет по частичному совпадению)",
                         "name": "search",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Поле для сортировки (created_at, views, updated_at) - по умолчанию created_at",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Направление сортировки (asc, desc) - по умолчанию desc",
+                        "name": "order",
+                        "in": "query"
                     }
                 ],
                 "responses": {
