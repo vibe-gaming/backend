@@ -16,6 +16,7 @@ type User struct {
 	SNILS       sql.NullString `db:"snils"`
 	Email       sql.NullString `db:"email"`
 	PhoneNumber sql.NullString `db:"phone_number"`
+	CityID      *uuid.UUID     `db:"city_id"`
 
 	CreatedAt time.Time  `db:"created_at"`
 	UpdatedAt time.Time  `db:"updated_at"`
