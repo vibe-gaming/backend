@@ -21,6 +21,7 @@ type Config struct {
 	ESIA               ESIAConfig
 	SocialGroupChecker SocialGroupCheckerConfig
 	Gigachat           GigachatConfig
+	Yandex             YandexConfig
 }
 
 type HttpServer struct {
@@ -105,6 +106,12 @@ type SocialGroupCheckerConfig struct {
 type GigachatConfig struct {
 	ClientID               string `env:"GIGACHAT_CLIENT_ID" env-default:""`
 	ClientAuthorizationKey string `env:"GIGACHAT_AUTHORIZATION_KEY" env-default:""`
+}
+
+type YandexConfig struct {
+	APIKey   string `env:"YANDEX_GPT_API_KEY" env-default:""`
+	FolderID string `env:"YANDEX_GPT_FOLDER_ID" env-default:""`
+	Lang     string `env:"YANDEX_GPT_STT_LANG" env-default:"ru-RU"`
 }
 
 func MustLoad() *Config {

@@ -21,6 +21,7 @@ import (
 	"github.com/vibe-gaming/backend/internal/esia"
 	"github.com/vibe-gaming/backend/internal/service"
 	"github.com/vibe-gaming/backend/internal/service/gigachat"
+	"github.com/vibe-gaming/backend/internal/service/yandexgpt"
 
 	"github.com/gin-gonic/gin"
 )
@@ -31,6 +32,7 @@ type Handler struct {
 	config         *config.Config
 	esiaClient     *esia.Client
 	gigachatClient *gigachat.Client
+	yandexClient   *yandexgpt.Client
 }
 
 func NewHandlers(
@@ -39,6 +41,7 @@ func NewHandlers(
 	cfg *config.Config,
 	esiaClient *esia.Client,
 	gigachatClient *gigachat.Client,
+	yandexClient *yandexgpt.Client,
 ) *Handler {
 	return &Handler{
 		services:       services,
@@ -46,6 +49,7 @@ func NewHandlers(
 		config:         cfg,
 		esiaClient:     esiaClient,
 		gigachatClient: gigachatClient,
+		yandexClient:   yandexClient,
 	}
 }
 
@@ -89,7 +93,7 @@ func (h *Handler) Init(cfg *config.Config) *gin.Engine {
 }
 
 func (h *Handler) initAPI(router *gin.Engine) {
-	internalHandlersV1 := internalV1.NewHandler(h.services, h.tokenManager, h.config, h.esiaClient, h.gigachatClient)
+	internalHandlersV1 := internalV1.NewHandler(h.services, h.tokenManager, h.config, h.esiaClient, h.gigachatClient, h.yandexClient)
 	api := router.Group("/api")
 	internalHandlersV1.Init(api)
 }

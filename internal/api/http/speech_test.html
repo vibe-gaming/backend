@@ -203,6 +203,21 @@
       <div class="auth-section">
         <label for="token">JWT токен:</label>
         <input type="text" id="token" placeholder="Вставьте ваш JWT токен" />
+        <div
+          style="
+            margin-top: 10px;
+            padding: 10px;
+            background: #d1ecf1;
+            border-radius: 5px;
+            font-size: 12px;
+            color: #0c5460;
+          "
+        >
+          <strong>ℹ️ Требование:</strong> сервис принимает только файлы OGG
+          (Opus), WAV или MP3.<br />
+          При записи с микрофона используем OGG/Opus — если браузер не
+          поддерживает этот формат, используйте готовый файл.
+        </div>
       </div>
 
       <div class="record-section">
@@ -211,9 +226,13 @@
       </div>
 
       <div class="file-upload" id="fileUpload">
-        <input type="file" id="fileInput" accept="audio/*" />
+        <input
+          type="file"
+          id="fileInput"
+          accept="audio/ogg,audio/wav,audio/mpeg,.ogg,.wav,.mp3"
+        />
         <p>📁 Или выберите аудиофайл</p>
-        <small style="color: #999">Поддерживаются: WAV, MP3, OGG</small>
+        <small style="color: #999">Поддерживаются: OGG (Opus), WAV, MP3</small>
       </div>
 
       <button class="button" id="uploadBtn" disabled>
@@ -228,6 +247,10 @@
       let audioChunks = [];
       let audioBlob = null;
 
+      const preferredRecorderMime = "audio/ogg;codecs=opus";
+      const fallbackRecorderMime = "audio/webm;codecs=opus";
+      const defaultWaveMime = "audio/wav";
+
       const recordBtn = document.getElementById("recordBtn");
       const status = document.getElementById("status");
       const fileInput = document.getElementById("fileInput");
@@ -241,19 +264,51 @@
         if (!mediaRecorder || mediaRecorder.state === "inactive") {
           try {
             const stream = await navigator.mediaDevices.getUserMedia({
-              audio: true,
+              audio: {
+                channelCount: 1,
+                sampleRate: 16000,
+              },
             });
-            mediaRecorder = new MediaRecorder(stream);
+
+            const mimeType = pickRecorderMime();
+            if (!mimeType) {
+              showError(
+                "Браузер не поддерживает запись в OGG/Opus. Попробуйте последнюю версию Chrome или Edge либо загрузите готовый файл."
+              );
+              return;
+            }
+
+            mediaRecorder = new MediaRecorder(stream, { mimeType });
 
             mediaRecorder.ondataavailable = (event) => {
               audioChunks.push(event.data);
             };
 
-            mediaRecorder.onstop = () => {
-              audioBlob = new Blob(audioChunks, { type: "audio/wav" });
+            mediaRecorder.onstop = async () => {
+              const recordedMime =
+                mediaRecorder.mimeType || mimeType || fallbackRecorderMime;
+              let blob = new Blob(audioChunks, { type: recordedMime });
               audioChunks = [];
+
+              if (!recordedMime.includes("ogg")) {
+                status.textContent = "Конвертация записи в WAV...";
+                try {
+                  blob = await transcodeToWav(blob);
+                  status.textContent = "Запись готова (формат WAV)";
+                } catch (e) {
+                  showError("Не удалось конвертировать запись: " + e.message);
+                  stream.getTracks().forEach((track) => track.stop());
+                  recordBtn.classList.remove("recording");
+                  uploadBtn.disabled = true;
+                  mediaRecorder = null;
+                  return;
+                }
+              } else {
+                status.textContent = "Запись готова (формат OGG/Opus)";
+              }
+
+              audioBlob = blob;
               uploadBtn.disabled = false;
-              status.textContent = "Запись готова к отправке";
               recordBtn.classList.remove("recording");
 
               stream.getTracks().forEach((track) => track.stop());
@@ -278,6 +333,12 @@
       fileInput.addEventListener("change", (e) => {
         const file = e.target.files[0];
         if (file) {
+          if (!isAllowedFile(file)) {
+            showError("Выберите файл в формате OGG (Opus), WAV или MP3");
+            uploadBtn.disabled = true;
+            audioBlob = null;
+            return;
+          }
           audioBlob = file;
           uploadBtn.disabled = false;
           status.textContent = `Файл выбран: ${file.name}`;
@@ -303,7 +364,18 @@
 
         try {
           const formData = new FormData();
-          formData.append("audio", audioBlob, "audio.wav");
+          let filename = "audio.ogg";
+          const blobType = (audioBlob.type || "").toLowerCase();
+
+          if (blobType.includes("wav")) filename = "audio.wav";
+          else if (blobType.includes("mp3") || blobType.includes("mpeg"))
+            filename = "audio.mp3";
+          else if (blobType.includes("ogg")) filename = "audio.ogg";
+          else if (audioBlob.name) {
+            filename = inferFilename(audioBlob.name);
+          }
+
+          formData.append("audio", audioBlob, filename);
 
           const response = await fetch("/api/v1/speech/recognize", {
             method: "POST",
@@ -318,7 +390,7 @@
           if (response.ok) {
             showResult(data.text);
           } else {
-            showError(data.message || "Ошибка при распознавании");
+            showError(data.error || data.message || "Ошибка при распознавании");
           }
         } catch (error) {
           showError("Ошибка соединения: " + error.message);
@@ -327,6 +399,101 @@
           uploadBtn.textContent = "Отправить на распознавание";
         }
       });
+
+      function isAllowedFile(file) {
+        const type = (file.type || "").toLowerCase();
+        if (
+          type.includes("ogg") ||
+          type.includes("wav") ||
+          type.includes("mpeg") ||
+          type.includes("mp3")
+        ) {
+          return true;
+        }
+        const name = (file.name || "").toLowerCase();
+        return (
+          name.endsWith(".ogg") ||
+          name.endsWith(".wav") ||
+          name.endsWith(".mp3")
+        );
+      }
+
+      function inferFilename(name) {
+        const lower = (name || "").toLowerCase();
+        if (lower.endsWith(".wav")) return "audio.wav";
+        if (lower.endsWith(".mp3")) return "audio.mp3";
+        if (lower.endsWith(".ogg")) return "audio.ogg";
+        return "audio.ogg";
+      }
+
+      function pickRecorderMime() {
+        if (MediaRecorder.isTypeSupported(preferredRecorderMime)) {
+          return preferredRecorderMime;
+        }
+        if (MediaRecorder.isTypeSupported(fallbackRecorderMime)) {
+          return fallbackRecorderMime;
+        }
+        return null;
+      }
+
+      async function transcodeToWav(blob) {
+        const arrayBuffer = await blob.arrayBuffer();
+        const audioCtx = new (window.AudioContext ||
+          window.webkitAudioContext)();
+        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+        const numChannels = audioBuffer.numberOfChannels;
+        const length = audioBuffer.length;
+        const sampleRate = audioBuffer.sampleRate;
+
+        const interleaved = new Float32Array(length * numChannels);
+        let offset = 0;
+        for (let i = 0; i < length; i++) {
+          for (let ch = 0; ch < numChannels; ch++) {
+            interleaved[offset++] = audioBuffer.getChannelData(ch)[i];
+          }
+        }
+
+        const wavBuffer = encodeWAV(interleaved, sampleRate, numChannels);
+        return new Blob([wavBuffer], { type: defaultWaveMime });
+      }
+
+      function encodeWAV(samples, sampleRate, numChannels) {
+        const bytesPerSample = 2;
+        const blockAlign = numChannels * bytesPerSample;
+        const dataLength = samples.length * bytesPerSample;
+        const buffer = new ArrayBuffer(44 + dataLength);
+        const view = new DataView(buffer);
+
+        writeString(view, 0, "RIFF");
+        view.setUint32(4, 36 + dataLength, true);
+        writeString(view, 8, "WAVE");
+        writeString(view, 12, "fmt ");
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true);
+        view.setUint16(22, numChannels, true);
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, sampleRate * blockAlign, true);
+        view.setUint16(32, blockAlign, true);
+        view.setUint16(34, bytesPerSample * 8, true);
+        writeString(view, 36, "data");
+        view.setUint32(40, dataLength, true);
+
+        let offset = 44;
+        for (let i = 0; i < samples.length; i++, offset += 2) {
+          let s = Math.max(-1, Math.min(1, samples[i]));
+          s = s < 0 ? s * 0x8000 : s * 0x7fff;
+          view.setInt16(offset, s, true);
+        }
+
+        return buffer;
+      }
+
+      function writeString(view, offset, string) {
+        for (let i = 0; i < string.length; i++) {
+          view.setUint8(offset + i, string.charCodeAt(i));
+        }
+      }
 
       function showResult(text) {
         result.className = "result";
