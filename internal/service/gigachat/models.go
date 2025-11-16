@@ -68,12 +68,14 @@ const (
 
 // Model константы для доступных моделей
 const (
-	ModelGigaChat     = "GigaChat"
-	ModelGigaChatPro  = "GigaChat-Pro"
-	ModelGigaChatMax  = "GigaChat-Max"
-	ModelGigaChat2    = "GigaChat-2"
-	ModelGigaChatPro2 = "GigaChat-2-Pro"
-	ModelGigaChatMax2 = "GigaChat-2-Max"
+	ModelGigaChat           = "GigaChat"
+	ModelGigaChatPro        = "GigaChat-Pro"
+	ModelGigaChatMax        = "GigaChat-Max"
+	ModelGigaChat2          = "GigaChat-2"
+	ModelGigaChatPro2       = "GigaChat-2-Pro"
+	ModelGigaChatMax2       = "GigaChat-2-Max"
+	ModelGigaChatPlus       = "GigaChat-Plus"
+	ModelGigaChatProPreview = "GigaChat-Pro-preview"
 )
 
 // Role константы для ролей сообщений
@@ -83,3 +85,21 @@ const (
 	RoleAssistant = "assistant"
 	RoleFunction  = "function"
 )
+
+// FileUploadResponse представляет ответ при загрузке файла
+type FileUploadResponse struct {
+	ID       string `json:"id"`
+	Object   string `json:"object"`
+	Bytes    int64  `json:"bytes"`
+	Created  int64  `json:"created_at"`
+	Filename string `json:"filename"`
+	Purpose  string `json:"purpose"`
+}
+
+// ChatRequestWithAttachments представляет запрос к чату с вложениями
+type ChatRequestWithAttachments struct {
+	Model       string    `json:"model"`
+	Messages    []Message `json:"messages"`
+	Attachments []string  `json:"attachments,omitempty"`
+	Stream      bool      `json:"stream"`
+}

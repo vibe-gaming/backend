@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Тест распознавания речи</title>
+    <!-- Библиотека для конвертации в MP3 -->
+    <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
     <style>
       * {
         margin: 0;
@@ -203,6 +205,20 @@
       <div class="auth-section">
         <label for="token">JWT токен:</label>
         <input type="text" id="token" placeholder="Вставьте ваш JWT токен" />
+        <div
+          style="
+            margin-top: 10px;
+            padding: 10px;
+            background: #d1ecf1;
+            border-radius: 5px;
+            font-size: 12px;
+            color: #0c5460;
+          "
+        >
+          <strong>ℹ️ Информация:</strong> Gigachat принимает только MP3
+          формат.<br />
+          При записи с микрофона аудио автоматически конвертируется в MP3.
+        </div>
       </div>
 
       <div class="record-section">
@@ -211,9 +227,15 @@
       </div>
 
       <div class="file-upload" id="fileUpload">
-        <input type="file" id="fileInput" accept="audio/*" />
+        <input
+          type="file"
+          id="fileInput"
+          accept="audio/*,.mp3,.wav,.ogg,.m4a,.mp4"
+        />
         <p>📁 Или выберите аудиофайл</p>
-        <small style="color: #999">Поддерживаются: WAV, MP3, OGG</small>
+        <small style="color: #999"
+          >Поддерживаются любые аудио форматы (конвертируются в MP3)</small
+        >
       </div>
 
       <button class="button" id="uploadBtn" disabled>
@@ -241,19 +263,64 @@
         if (!mediaRecorder || mediaRecorder.state === "inactive") {
           try {
             const stream = await navigator.mediaDevices.getUserMedia({
-              audio: true,
+              audio: {
+                channelCount: 1,
+                sampleRate: 16000,
+              },
             });
-            mediaRecorder = new MediaRecorder(stream);
+
+            // Пробуем найти поддерживаемый MIME-тип
+            const mimeTypes = [
+              "audio/webm;codecs=opus",
+              "audio/webm",
+              "audio/ogg;codecs=opus",
+              "audio/ogg",
+            ];
+
+            let selectedMime = null;
+            for (const mime of mimeTypes) {
+              if (MediaRecorder.isTypeSupported(mime)) {
+                selectedMime = mime;
+                break;
+              }
+            }
+
+            if (!selectedMime) {
+              showError(
+                "Браузер не поддерживает запись аудио. Попробуйте последнюю версию Chrome, Edge или Firefox."
+              );
+              return;
+            }
+
+            mediaRecorder = new MediaRecorder(stream, {
+              mimeType: selectedMime,
+            });
 
             mediaRecorder.ondataavailable = (event) => {
               audioChunks.push(event.data);
             };
 
-            mediaRecorder.onstop = () => {
-              audioBlob = new Blob(audioChunks, { type: "audio/wav" });
+            mediaRecorder.onstop = async () => {
+              const recordedMime = mediaRecorder.mimeType || selectedMime;
+              let blob = new Blob(audioChunks, { type: recordedMime });
               audioChunks = [];
+
+              // Всегда конвертируем в MP3 для Gigachat
+              status.textContent = "Конвертация записи в MP3...";
+              try {
+                blob = await convertToMp3(blob);
+                status.textContent = "Запись готова (формат MP3)";
+              } catch (e) {
+                showError("Не удалось конвертировать запись: " + e.message);
+                stream.getTracks().forEach((track) => track.stop());
+                recordBtn.classList.remove("recording");
+                uploadBtn.disabled = true;
+                mediaRecorder = null;
+                return;
+              }
+
+              audioBlob = blob;
               uploadBtn.disabled = false;
-              status.textContent = "Запись готова к отправке";
               recordBtn.classList.remove("recording");
 
               stream.getTracks().forEach((track) => track.stop());
@@ -275,12 +342,30 @@
       // Загрузка файла
       fileUpload.addEventListener("click", () => fileInput.click());
 
-      fileInput.addEventListener("change", (e) => {
+      fileInput.addEventListener("change", async (e) => {
         const file = e.target.files[0];
         if (file) {
-          audioBlob = file;
-          uploadBtn.disabled = false;
-          status.textContent = `Файл выбран: ${file.name}`;
+          // Проверяем, что это аудиофайл
+          if (!file.type.startsWith("audio/")) {
+            showError("Выберите аудиофайл");
+            uploadBtn.disabled = true;
+            audioBlob = null;
+            return;
+          }
+
+          status.textContent = `Файл выбран: ${file.name}. Конвертация в MP3...`;
+          uploadBtn.disabled = true;
+
+          try {
+            // Конвертируем файл в MP3
+            audioBlob = await convertToMp3(file);
+            uploadBtn.disabled = false;
+            status.textContent = `Файл готов к отправке (сконвертирован в MP3)`;
+          } catch (e) {
+            showError("Не удалось конвертировать файл: " + e.message);
+            uploadBtn.disabled = true;
+            audioBlob = null;
+          }
         }
       });
 
@@ -303,7 +388,8 @@
 
         try {
           const formData = new FormData();
-          formData.append("audio", audioBlob, "audio.wav");
+          // Всегда отправляем как MP3
+          formData.append("audio", audioBlob, "audio.mp3");
 
           const response = await fetch("/api/v1/speech/recognize", {
             method: "POST",
@@ -318,7 +404,7 @@
           if (response.ok) {
             showResult(data.text);
           } else {
-            showError(data.message || "Ошибка при распознавании");
+            showError(data.error || data.message || "Ошибка при распознавании");
           }
         } catch (error) {
           showError("Ошибка соединения: " + error.message);
@@ -327,6 +413,72 @@
           uploadBtn.textContent = "Отправить на распознавание";
         }
       });
+
+      // Конвертация аудио в MP3 используя lamejs
+      async function convertToMp3(blob) {
+        // Декодируем аудио
+        const arrayBuffer = await blob.arrayBuffer();
+        const audioCtx = new (window.AudioContext ||
+          window.webkitAudioContext)();
+        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+        // Настройки для MP3
+        const sampleRate = 16000; // 16kHz для речи
+        const channels = 1; // моно
+        const kbps = 128; // качество
+
+        // Ресемплируем и конвертируем в моно если нужно
+        let samples;
+        if (
+          audioBuffer.sampleRate !== sampleRate ||
+          audioBuffer.numberOfChannels !== 1
+        ) {
+          const offlineCtx = new OfflineAudioContext(
+            channels,
+            audioBuffer.duration * sampleRate,
+            sampleRate
+          );
+
+          const source = offlineCtx.createBufferSource();
+          source.buffer = audioBuffer;
+          source.connect(offlineCtx.destination);
+          source.start(0);
+
+          const resampledBuffer = await offlineCtx.startRendering();
+          samples = resampledBuffer.getChannelData(0);
+        } else {
+          samples = audioBuffer.getChannelData(0);
+        }
+
+        // Конвертируем Float32Array в Int16Array для MP3 энкодера
+        const samplesInt16 = new Int16Array(samples.length);
+        for (let i = 0; i < samples.length; i++) {
+          let s = Math.max(-1, Math.min(1, samples[i]));
+          samplesInt16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+        }
+
+        // Создаем MP3 энкодер
+        const mp3encoder = new lamejs.Mp3Encoder(channels, sampleRate, kbps);
+        const mp3Data = [];
+
+        const blockSize = 1152; // стандартный размер блока для MP3
+        for (let i = 0; i < samplesInt16.length; i += blockSize) {
+          const samplesBlock = samplesInt16.subarray(i, i + blockSize);
+          const mp3buf = mp3encoder.encodeBuffer(samplesBlock);
+          if (mp3buf.length > 0) {
+            mp3Data.push(mp3buf);
+          }
+        }
+
+        // Завершаем кодирование
+        const mp3buf = mp3encoder.flush();
+        if (mp3buf.length > 0) {
+          mp3Data.push(mp3buf);
+        }
+
+        // Создаем blob из MP3 данных
+        return new Blob(mp3Data, { type: "audio/mp3" });
+      }
 
       function showResult(text) {
         result.className = "result";

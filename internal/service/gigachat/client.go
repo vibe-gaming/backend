@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"strings"
 	"time"
@@ -153,7 +154,7 @@ func (c *Client) SendBytes(query []byte) ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("ошибка чтения ответа: %w", err)
 		} else {
-			return body, fmt.Errorf("Некорректный статус ответа: %v", resp.Status)
+			return body, fmt.Errorf("некорректный статус ответа: %v", resp.Status)
 		}
 	}
 
@@ -295,4 +296,196 @@ func (c *Client) EnhanceSearchQuery(ctx context.Context, query string) ([]string
 		zap.String("original", query),
 		zap.Strings("enhanced", terms))
 	return terms, nil
+}
+
+// UploadFile загружает аудиофайл в хранилище GigaChat
+func (c *Client) UploadFile(ctx context.Context, fileData []byte, filename, mimeType string) (*FileUploadResponse, error) {
+	// Логируем сигнатуру файла для отладки (первые 16 байт)
+	signature := ""
+	if len(fileData) >= 16 {
+		signature = fmt.Sprintf("%X", fileData[:16])
+	}
+
+	logger.Info("UploadFile called",
+		zap.String("filename", filename),
+		zap.String("mime_type", mimeType),
+		zap.Int("size", len(fileData)),
+		zap.String("signature", signature))
+
+	// Проверяем и обновляем токен при необходимости
+	if err := c.ensureValidToken(); err != nil {
+		logger.Error("Failed to ensure valid token", zap.Error(err))
+		return nil, fmt.Errorf("failed to get token: %w", err)
+	}
+
+	// Создаем multipart form
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	// Очищаем MIME-тип от параметров (например, ;codecs=opus)
+	cleanMimeType := mimeType
+	if idx := strings.Index(mimeType, ";"); idx > 0 {
+		cleanMimeType = mimeType[:idx]
+	}
+
+	logger.Info("Using cleaned MIME type", zap.String("original", mimeType), zap.String("clean", cleanMimeType))
+
+	// Создаем часть с правильным MIME-типом
+	h := make(map[string][]string)
+	h["Content-Disposition"] = []string{fmt.Sprintf(`form-data; name="file"; filename="%s"`, filename)}
+	if cleanMimeType != "" {
+		h["Content-Type"] = []string{cleanMimeType}
+	}
+
+	part, err := writer.CreatePart(h)
+	if err != nil {
+		logger.Error("Failed to create form part", zap.Error(err))
+		return nil, fmt.Errorf("failed to create form part: %w", err)
+	}
+
+	if _, err := part.Write(fileData); err != nil {
+		logger.Error("Failed to write file data", zap.Error(err))
+		return nil, fmt.Errorf("failed to write file data: %w", err)
+	}
+
+	// Добавляем purpose (опционально)
+	if err := writer.WriteField("purpose", "general"); err != nil {
+		logger.Error("Failed to write purpose field", zap.Error(err))
+		return nil, fmt.Errorf("failed to write purpose field: %w", err)
+	}
+
+	if err := writer.Close(); err != nil {
+		logger.Error("Failed to close writer", zap.Error(err))
+		return nil, fmt.Errorf("failed to close writer: %w", err)
+	}
+
+	// Создаем запрос
+	httpReq, err := http.NewRequest("POST", fmt.Sprintf("%s/files", baseURL), body)
+	if err != nil {
+		logger.Error("Failed to create request", zap.Error(err))
+		return nil, fmt.Errorf("ошибка создания запроса: %w", err)
+	}
+
+	// Устанавливаем заголовки
+	httpReq.Header.Set("Content-Type", writer.FormDataContentType())
+	httpReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.token.AccessToken))
+	httpReq.Header.Set("X-Client-ID", c.clientID)
+	httpReq.Header.Set("X-Request-ID", generateUUID())
+
+	// Отправляем запрос
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		logger.Error("Failed to send request", zap.Error(err))
+		return nil, fmt.Errorf("ошибка отправки запроса: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Читаем ответ
+	responseBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		logger.Error("Failed to read response", zap.Error(err))
+		return nil, fmt.Errorf("ошибка чтения ответа: %w", err)
+	}
+
+	// Проверяем статус
+	if resp.StatusCode != http.StatusOK {
+		logger.Error("Upload failed", zap.Int("status", resp.StatusCode), zap.String("body", string(responseBody)))
+		return nil, fmt.Errorf("upload failed: %s: %s", resp.Status, string(responseBody))
+	}
+
+	// Разбираем ответ
+	var uploadResp FileUploadResponse
+	if err := json.Unmarshal(responseBody, &uploadResp); err != nil {
+		logger.Error("Failed to unmarshal response", zap.Error(err), zap.String("body", string(responseBody)))
+		return nil, fmt.Errorf("ошибка разбора ответа: %w", err)
+	}
+
+	logger.Info("Successfully uploaded file", zap.String("file_id", uploadResp.ID))
+	return &uploadResp, nil
+}
+
+// TranscribeAudio распознает речь из аудиофайла используя chat/completions с attachments
+func (c *Client) TranscribeAudio(ctx context.Context, fileID string) (string, error) {
+	logger.Info("TranscribeAudio called", zap.String("file_id", fileID))
+
+	// Проверяем и обновляем токен при необходимости
+	if err := c.ensureValidToken(); err != nil {
+		logger.Error("Failed to ensure valid token", zap.Error(err))
+		return "", fmt.Errorf("failed to get token: %w", err)
+	}
+
+	// Формируем запрос к чату с прикрепленным файлом
+	reqBody := &ChatRequest{
+		Model: ModelGigaChatPro,
+		Messages: []Message{
+			{
+				Role:        RoleUser,
+				Content:     "Распознай речь из прикреплённого аудиофайла и верни только текст, который был произнесён, без лишних пояснений.",
+				Attachments: []string{fileID},
+			},
+		},
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		logger.Error("Failed to marshal request", zap.Error(err))
+		return "", fmt.Errorf("ошибка маршалинга запроса: %w", err)
+	}
+
+	logger.Info("Sending transcription request", zap.String("request_json", string(jsonData)))
+
+	// Создаем запрос
+	httpReq, err := http.NewRequest("POST", fmt.Sprintf("%s/chat/completions", baseURL), bytes.NewReader(jsonData))
+	if err != nil {
+		logger.Error("Failed to create request", zap.Error(err))
+		return "", fmt.Errorf("ошибка создания запроса: %w", err)
+	}
+
+	// Устанавливаем заголовки
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.token.AccessToken))
+	httpReq.Header.Set("X-Client-ID", c.clientID)
+	httpReq.Header.Set("X-Request-ID", generateUUID())
+	httpReq.Header.Set("X-Session-ID", generateUUID())
+
+	// Отправляем запрос
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		logger.Error("Failed to send request", zap.Error(err))
+		return "", fmt.Errorf("ошибка отправки запроса: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Читаем ответ
+	responseBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		logger.Error("Failed to read response", zap.Error(err))
+		return "", fmt.Errorf("ошибка чтения ответа: %w", err)
+	}
+
+	logger.Info("Received transcription response", zap.String("response_json", string(responseBody)))
+
+	// Проверяем статус
+	if resp.StatusCode != http.StatusOK {
+		logger.Error("Transcription request failed", zap.Int("status", resp.StatusCode), zap.String("body", string(responseBody)))
+		return "", fmt.Errorf("transcription request failed: %s: %s", resp.Status, string(responseBody))
+	}
+
+	// Разбираем ответ
+	var chatResp ChatResponse
+	if err := json.Unmarshal(responseBody, &chatResp); err != nil {
+		logger.Error("Failed to unmarshal response", zap.Error(err), zap.String("body", string(responseBody)))
+		return "", fmt.Errorf("ошибка разбора ответа: %w", err)
+	}
+
+	// Извлекаем текст из ответа
+	if len(chatResp.Choices) == 0 {
+		logger.Error("No choices in response")
+		return "", fmt.Errorf("нет вариантов ответа")
+	}
+
+	transcribedText := chatResp.Choices[0].Message.Content
+	logger.Info("Successfully transcribed audio", zap.String("text", transcribedText))
+
+	return transcribedText, nil
 }
