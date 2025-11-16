@@ -10,7 +10,7 @@ import (
 
 func (h *Handler) initCitiesRoutes(api *gin.RouterGroup) {
 	cities := api.Group("/cities")
-	cities.GET("/", h.getCities)
+	cities.GET("", h.getCities)
 }
 
 // @Summary Get Cities

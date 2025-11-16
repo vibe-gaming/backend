@@ -1,19 +1,20 @@
 package apiHttp
 
 import (
-	"net/http"
+	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
-func corsMiddleware(c *gin.Context) {
-	c.Header("Access-Control-Allow-Origin", "*")
-	c.Header("Access-Control-Allow-Methods", "*")
-	c.Header("Access-Control-Allow-Headers", "*")
-
-	if c.Request.Method != http.MethodOptions {
-		c.Next()
-	} else {
-		c.AbortWithStatus(http.StatusOK)
-	}
+func corsMiddleware(allowOrigins []string) gin.HandlerFunc {
+	return cors.New(cors.Config{
+		// TODO: Change to production URL
+		AllowOrigins:     allowOrigins,
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"},
+		AllowHeaders:     []string{"Content-Type", "Authorization", "Origin", "Accept", "X-Requested-With", "sentry-trace", "baggage"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	})
 }

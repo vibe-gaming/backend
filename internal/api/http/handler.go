@@ -58,7 +58,8 @@ func (h *Handler) Init(cfg *config.Config) *gin.Engine {
 	router.Use(
 		ginzap.Ginzap(logger.Logger(), time.RFC3339, true),
 		limiter.Limit(cfg.Limiter.RPS, cfg.Limiter.Burst, cfg.Limiter.TTL),
-		corsMiddleware,
+		// TODO: Get from config
+		corsMiddleware([]string{"http://localhost:3000", "https://localhost:3000", "https://lgoty.netlify.app"}),
 	)
 	router.Use(ginzap.RecoveryWithZap(logger.Logger(), true))
 
