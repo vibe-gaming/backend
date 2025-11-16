@@ -2,14 +2,18 @@ package gigachat
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/vibe-gaming/backend/pkg/logger"
+	"go.uber.org/zap"
 )
 
 const (
@@ -45,6 +49,11 @@ func NewClient(authoizationKey string) *Client {
 // SetScope устанавливает scope для клиента
 func (c *Client) SetScope(scope string) {
 	c.scope = scope
+}
+
+// SetClientID устанавливает client ID для клиента
+func (c *Client) SetClientID(clientID string) {
+	c.clientID = clientID
 }
 
 // GetToken получает токен доступа
@@ -184,4 +193,106 @@ func (c *Client) Chat(req *ChatRequest) (*ChatResponse, error) {
 func generateUUID() string {
 	// Генерация реального UUID
 	return uuid.New().String()
+}
+
+type EnhancedSearchResult struct {
+	OriginalQuery string   `json:"original_query"`
+	EnhancedTerms []string `json:"enhanced_terms"`
+}
+
+// EnhanceSearchQuery улучшает поисковый запрос через GigaChat:
+// - исправляет орфографические ошибки
+// - добавляет морфологические варианты слов
+// - находит синонимы
+func (c *Client) EnhanceSearchQuery(ctx context.Context, query string) ([]string, error) {
+	logger.Info("EnhanceSearchQuery called",
+		zap.String("query", query),
+		zap.String("baseURL", baseURL),
+		zap.Bool("hasAPIKey", c.basicAuth != ""))
+
+	if query == "" {
+		logger.Info("Empty query provided to EnhanceSearchQuery")
+		return []string{query}, nil
+	}
+
+	// Проверяем и обновляем токен при необходимости
+	if err := c.ensureValidToken(); err != nil {
+		logger.Error("Failed to ensure valid token", zap.Error(err))
+		return nil, fmt.Errorf("failed to get token: %w", err)
+	}
+
+	// Формируем промпт для GigaChat
+	prompt := fmt.Sprintf(`Проанализируй поисковый запрос и помоги улучшить его для поиска социальных льгот и мер поддержки.
+
+Запрос: "%s"
+
+Твоя задача:
+1. Исправь орфографические ошибки (если есть)
+2. Добавь морфологические варианты слов (например, "студент" -> "студенты", "студентам", "студентов")
+3. Найди синонимы и связанные термины (например, "школьник" -> "ученик", "учащийся")
+
+Верни результат в виде списка поисковых терминов через запятую, БЕЗ объяснений и дополнительного текста.
+Каждый термин должен быть коротким (1-3 слова максимум).
+
+Пример формата ответа:
+студент, студенты, студентам, учащийся, обучающийся
+
+Не добавляй нумерацию, точки или другое форматирование, только термины через запятую.`, query)
+
+	reqBody := &ChatRequest{
+		Model: "GigaChat",
+		Messages: []Message{
+			{
+				Role:    "user",
+				Content: prompt,
+			},
+		},
+	}
+
+	logger.Info("Sending chat request to GigaChat")
+	chatResp, err := c.Chat(reqBody)
+	if err != nil {
+		logger.Error("Failed to send chat request", zap.Error(err))
+		return nil, fmt.Errorf("failed to send chat request: %w", err)
+	}
+
+	logger.Info("Successfully decoded GigaChat response", zap.Int("choices_count", len(chatResp.Choices)))
+
+	if len(chatResp.Choices) == 0 {
+		logger.Info("GigaChat returned no choices, using original query")
+		return []string{query}, nil
+	}
+
+	// Парсим ответ от GigaChat
+	responseText := chatResp.Choices[0].Message.Content
+	logger.Info("GigaChat response text", zap.String("response", responseText))
+
+	// Разбиваем по запятой и очищаем от лишних пробелов
+	terms := []string{}
+	rawTerms := strings.Split(responseText, ",")
+
+	for _, term := range rawTerms {
+		cleaned := strings.TrimSpace(term)
+		// Убираем возможные артефакты (нумерацию, точки и т.д.)
+		cleaned = strings.TrimPrefix(cleaned, "-")
+		cleaned = strings.TrimPrefix(cleaned, "•")
+		cleaned = strings.TrimSpace(cleaned)
+
+		if cleaned != "" && len(cleaned) > 1 {
+			terms = append(terms, cleaned)
+		}
+	}
+
+	logger.Info("Parsed terms from GigaChat", zap.Strings("terms", terms), zap.Int("count", len(terms)))
+
+	// Если не удалось распарсить ответ, возвращаем оригинальный запрос
+	if len(terms) == 0 {
+		logger.Info("Failed to parse any terms from GigaChat response, using original query")
+		return []string{query}, nil
+	}
+
+	logger.Info("Successfully enhanced search query",
+		zap.String("original", query),
+		zap.Strings("enhanced", terms))
+	return terms, nil
 }

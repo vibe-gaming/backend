@@ -9,6 +9,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/vibe-gaming/backend/internal/domain"
 	"github.com/vibe-gaming/backend/internal/repository"
+	logger "github.com/vibe-gaming/backend/pkg/logger"
+	"go.uber.org/zap"
 )
 
 // BenefitFilters - псевдоним для удобства использования
@@ -20,15 +22,22 @@ type FilterStats = repository.FilterStats
 type BenefitService struct {
 	benefitRepository  repository.BenefitRepository
 	favoriteRepository repository.FavoriteRepository
+	gigachatClient     interface {
+		EnhanceSearchQuery(ctx context.Context, query string) ([]string, error)
+	}
 }
 
 func newBenefitService(
 	benefitRepository repository.BenefitRepository,
 	favoriteRepository repository.FavoriteRepository,
+	gigachatClient interface {
+		EnhanceSearchQuery(ctx context.Context, query string) ([]string, error)
+	},
 ) *BenefitService {
 	return &BenefitService{
 		benefitRepository:  benefitRepository,
 		favoriteRepository: favoriteRepository,
+		gigachatClient:     gigachatClient,
 	}
 }
 
@@ -41,16 +50,41 @@ func (s *BenefitService) GetAll(ctx context.Context, page, limit int, filters *B
 		limit = 10
 	}
 
-	// Подготавливаем поисковый запрос для частичного поиска
+	// Подготавливаем поисковый запрос для умного поиска
 	if filters != nil && filters.Search != nil && *filters.Search != "" {
+		logger.Info("Processing search query", zap.String("original_query", *filters.Search))
+
 		if containsBooleanOperators(*filters.Search) {
 			// Пользователь использует свои операторы - не трогаем запрос
+			logger.Info("User provided boolean operators, skipping GigaChat enhancement")
 			filters.SearchMode = "boolean"
 		} else {
-			// Для обычного запроса добавляем * к каждому слову для prefix matching
-			processedQuery := addWildcardsToQuery(*filters.Search)
-			filters.Search = &processedQuery
-			filters.SearchMode = "boolean"
+			// Проверяем, что GigaChat клиент доступен
+			if s.gigachatClient == nil {
+				logger.Info("GigaChat client is nil, using fallback search")
+				processedQuery := addWildcardsToQuery(*filters.Search)
+				filters.Search = &processedQuery
+				filters.SearchMode = "boolean"
+			} else {
+				// Используем GigaChat для улучшения поискового запроса
+				logger.Info("Calling GigaChat to enhance search query")
+				enhancedTerms, err := s.gigachatClient.EnhanceSearchQuery(ctx, *filters.Search)
+				if err != nil {
+					// Если GigaChat недоступен, используем обычный поиск
+					logger.Error("GigaChat enhancement failed, using fallback search", zap.Error(err))
+					processedQuery := addWildcardsToQuery(*filters.Search)
+					filters.Search = &processedQuery
+					filters.SearchMode = "boolean"
+				} else {
+					// Формируем Boolean запрос из расширенных терминов
+					// Используем ИЛИ между терминами для максимального охвата
+					logger.Info("GigaChat enhancement successful", zap.Strings("enhanced_terms", enhancedTerms))
+					booleanQuery := buildBooleanQuery(enhancedTerms)
+					logger.Info("Built boolean query", zap.String("query", booleanQuery))
+					filters.Search = &booleanQuery
+					filters.SearchMode = "boolean"
+				}
+			}
 		}
 	}
 
@@ -105,6 +139,34 @@ func addWildcardsToQuery(query string) string {
 	return strings.Join(processedWords, " ")
 }
 
+// buildBooleanQuery создает Boolean запрос из списка терминов
+// Используется для поиска по нескольким вариантам слов (с ошибками, морфологией, синонимами)
+func buildBooleanQuery(terms []string) string {
+	if len(terms) == 0 {
+		return ""
+	}
+
+	// Добавляем wildcard к каждому термину и объединяем через OR (пробел в Boolean mode)
+	processedTerms := make([]string, 0, len(terms))
+	for _, term := range terms {
+		term = strings.TrimSpace(term)
+		if term == "" {
+			continue
+		}
+
+		// Для каждого термина добавляем wildcard для поиска по префиксу
+		// Например: "студент*" найдет "студент", "студенты", "студентам" и т.д.
+		if !strings.HasSuffix(term, "*") {
+			term = term + "*"
+		}
+		processedTerms = append(processedTerms, term)
+	}
+
+	// В Boolean mode пробел между терминами означает OR
+	// Это позволит найти документы, содержащие хотя бы один из терминов
+	return strings.Join(processedTerms, " ")
+}
+
 func (s *BenefitService) GetByID(ctx context.Context, id string) (*domain.Benefit, error) {
 	return s.benefitRepository.GetByID(ctx, id)
 }
@@ -142,16 +204,34 @@ func (s *BenefitService) MarkAsFavorite(ctx context.Context, userID uuid.UUID, b
 }
 
 func (s *BenefitService) GetFilterStats(ctx context.Context, filters *BenefitFilters) (*FilterStats, error) {
-	// Подготавливаем поисковый запрос для частичного поиска (так же как в GetAll)
+	// Подготавливаем поисковый запрос для умного поиска (так же как в GetAll)
 	if filters != nil && filters.Search != nil && *filters.Search != "" {
 		if containsBooleanOperators(*filters.Search) {
 			// Пользователь использует свои операторы - не трогаем запрос
 			filters.SearchMode = "boolean"
 		} else {
-			// Для обычного запроса добавляем * к каждому слову для prefix matching
-			processedQuery := addWildcardsToQuery(*filters.Search)
-			filters.Search = &processedQuery
-			filters.SearchMode = "boolean"
+			// Проверяем, что GigaChat клиент доступен
+			if s.gigachatClient == nil {
+				logger.Info("GigaChat client is nil in GetFilterStats, using fallback search")
+				processedQuery := addWildcardsToQuery(*filters.Search)
+				filters.Search = &processedQuery
+				filters.SearchMode = "boolean"
+			} else {
+				// Используем GigaChat для улучшения поискового запроса
+				enhancedTerms, err := s.gigachatClient.EnhanceSearchQuery(ctx, *filters.Search)
+				if err != nil {
+					// Если GigaChat недоступен, используем обычный поиск
+					logger.Error("GigaChat enhancement failed in GetFilterStats", zap.Error(err))
+					processedQuery := addWildcardsToQuery(*filters.Search)
+					filters.Search = &processedQuery
+					filters.SearchMode = "boolean"
+				} else {
+					// Формируем Boolean запрос из расширенных терминов
+					booleanQuery := buildBooleanQuery(enhancedTerms)
+					filters.Search = &booleanQuery
+					filters.SearchMode = "boolean"
+				}
+			}
 		}
 	}
 

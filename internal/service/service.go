@@ -21,12 +21,15 @@ type Services struct {
 }
 
 type Deps struct {
-	Config       *config.Config
-	Hasher       hash.PasswordHasher
-	TokenManager auth.TokenManager
-	OtpGenerator otp.Generator
-	Repos        *repository.Repositories
-	EsiaClient   *esia.Client
+	Config         *config.Config
+	Hasher         hash.PasswordHasher
+	TokenManager   auth.TokenManager
+	OtpGenerator   otp.Generator
+	Repos          *repository.Repositories
+	EsiaClient     *esia.Client
+	GigachatClient interface {
+		EnhanceSearchQuery(ctx context.Context, query string) ([]string, error)
+	}
 }
 
 func NewServices(deps Deps) *Services {
@@ -41,7 +44,7 @@ func NewServices(deps Deps) *Services {
 			deps.Config.Auth,
 			deps.Config,
 		),
-		Benefits: newBenefitService(deps.Repos.Benefits, deps.Repos.Favorite),
+		Benefits: newBenefitService(deps.Repos.Benefits, deps.Repos.Favorite, deps.GigachatClient),
 		Cities:   newCityService(deps.Repos.Cities),
 	}
 }

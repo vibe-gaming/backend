@@ -96,16 +96,18 @@ func main() {
 	esiaClient := esia.NewClient(cfg.ESIA)
 	socialGroupCheckerClient := socialgroupchecker.NewClient(cfg.SocialGroupChecker.BaseURL)
 	gigachatClient := gigachat.NewClient(cfg.Gigachat.ClientAuthorizationKey)
+	gigachatClient.SetClientID(cfg.Gigachat.ClientID)
 
 	// Services, Repos & API Handlers
 	repos := repository.NewRepositories(dbMySQL)
 	services := service.NewServices(service.Deps{
-		Config:       cfg,
-		Hasher:       hasher,
-		TokenManager: tokenManager,
-		OtpGenerator: otpGenerator,
-		Repos:        repos,
-		EsiaClient:   esiaClient,
+		Config:         cfg,
+		Hasher:         hasher,
+		TokenManager:   tokenManager,
+		OtpGenerator:   otpGenerator,
+		Repos:          repos,
+		EsiaClient:     esiaClient,
+		GigachatClient: gigachatClient,
 	})
 	workers := worker.NewWorkers(worker.Deps{
 		Redis:                    redis,

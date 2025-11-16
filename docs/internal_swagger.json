@@ -641,10 +641,10 @@
         "ErrorStruct": {
             "type": "object",
             "properties": {
-                "error_code": {
+                "ErrorCode": {
                     "type": "integer"
                 },
-                "error_message": {
+                "ErrorMessage": {
                     "type": "string"
                 }
             }
@@ -672,29 +672,6 @@
                 }
             }
         },
-        "domain.GroupType": {
-            "type": "string",
-            "enum": [
-                "pensioners",
-                "disabled",
-                "young_families",
-                "low_income",
-                "students",
-                "large_families",
-                "children",
-                "veterans"
-            ],
-            "x-enum-varnames": [
-                "UserGroupPensioners",
-                "UserGroupDisabled",
-                "UserGroupYoungFamilies",
-                "UserGroupLowIncome",
-                "UserGroupStudents",
-                "UserGroupLargeFamilies",
-                "UserGroupChildren",
-                "UserGroupVeterans"
-            ]
-        },
         "domain.UserGroup": {
             "type": "object",
             "properties": {
@@ -715,37 +692,16 @@
                     "type": "string"
                 },
                 "status": {
-                    "$ref": "#/definitions/domain.VerificationStatus"
+                    "type": "string"
                 },
                 "type": {
-                    "$ref": "#/definitions/domain.GroupType"
+                    "type": "string"
                 },
                 "verified_at": {
                     "description": "Когда подтверждена",
                     "type": "string"
                 }
             }
-        },
-        "domain.VerificationStatus": {
-            "type": "string",
-            "enum": [
-                "pending",
-                "verified",
-                "rejected",
-                "expired"
-            ],
-            "x-enum-comments": {
-                "VerificationStatusExpired": "Истекла",
-                "VerificationStatusPending": "Ожидает подтверждения",
-                "VerificationStatusRejected": "Отклонена",
-                "VerificationStatusVerified": "Подтверждена"
-            },
-            "x-enum-varnames": [
-                "VerificationStatusPending",
-                "VerificationStatusVerified",
-                "VerificationStatusRejected",
-                "VerificationStatusExpired"
-            ]
         },
         "v1.benefitResponse": {
             "type": "object",
@@ -926,7 +882,7 @@
                 "groups": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/domain.GroupType"
+                        "type": "string"
                     }
                 }
             }
