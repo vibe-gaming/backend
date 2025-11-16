@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/vibe-gaming/backend/internal/domain"
 	"github.com/vibe-gaming/backend/internal/service"
 	"github.com/vibe-gaming/backend/pkg/logger"
@@ -16,8 +17,9 @@ import (
 func (h *Handler) initBenefits(api *gin.RouterGroup) {
 	benefits := api.Group("/benefits")
 	{
-		benefits.GET("", h.getBenefitsList)
+		benefits.GET("", h.optionalUserIdentityMiddleware, h.getBenefitsList)
 		benefits.GET("/:id", h.getBenefitByID)
+		benefits.POST("/:id/favorite", h.userIdentityMiddleware, h.markBenefitAsFavorite)
 	}
 }
 
@@ -80,6 +82,7 @@ type benefitsListResponse struct {
 // @Param search query string false "Поисковый запрос (автоматически ищет по частичному совпадению)"
 // @Param sort_by query string false "Поле для сортировки (created_at, views, updated_at) - по умолчанию created_at"
 // @Param order query string false "Направление сортировки (asc, desc) - по умолчанию desc"
+// @Param favorites query boolean false "Показать только избранные льготы (работает только при авторизации, иначе игнорируется)"
 // @Success 200 {object} benefitsListResponse
 // @Failure 400 {object} ErrorStruct
 // @Failure 500 {object} ErrorStruct
@@ -154,6 +157,18 @@ func (h *Handler) getBenefitsList(c *gin.Context) {
 
 	if search := c.Query("search"); search != "" {
 		filters.Search = &search
+	}
+
+	// Фильтр по избранным (только для авторизованных пользователей)
+	if favoritesStr := c.Query("favorites"); favoritesStr == "true" {
+		// Пытаемся получить userID из контекста (если пользователь авторизован)
+		if userID, err := h.getUserUUID(c); err == nil {
+			userIDStr := userID.String()
+			filters.UserID = &userIDStr
+			logger.Info("favorites filter applied", zap.String("user_id", userIDStr))
+		} else {
+			logger.Info("favorites filter requested but user not authenticated", zap.Error(err))
+		}
 	}
 
 	// Параметры сортировки
@@ -323,4 +338,42 @@ func (h *Handler) getBenefitByID(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+// @Summary Toggle Benefit Favorite Status
+// @Tags Benefits
+// @Description Переключить статус избранной льготы (toggle). Если льгота в избранном - удалит из избранного, если нет - добавит в избранное
+// @ModuleID markBenefitAsFavorite
+// @Accept  json
+// @Produce  json
+// @Param id path string true "Benefit ID (UUID)"
+// @Security UserAuth
+// @Success 200
+// @Failure 400 {object} ErrorStruct
+// @Failure 401 {object} ErrorStruct
+// @Failure 500 {object} ErrorStruct
+// @Router /benefits/{id}/favorite [post]
+func (h *Handler) markBenefitAsFavorite(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		logger.Error("benefit id is empty")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "benefit id is required"})
+		return
+	}
+
+	userID, err := h.getUserUUID(c)
+	if err != nil {
+		logger.Error("failed to get user id", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get user id"})
+		return
+	}
+
+	err = h.services.Benefits.MarkAsFavorite(c.Request.Context(), userID, uuid.MustParse(id))
+	if err != nil {
+		logger.Error("failed to mark benefit as favorite", zap.Error(err), zap.String("id", id))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to mark benefit as favorite"})
+		return
+	}
+
+	c.Status(http.StatusOK)
 }

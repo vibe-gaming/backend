@@ -14,6 +14,7 @@ type Repositories struct {
 	RefreshSession RefreshSession
 	Benefits       BenefitRepository
 	Cities         Cities
+	Favorite       FavoriteRepository
 }
 
 func NewRepositories(db *sqlx.DB) *Repositories {
@@ -22,6 +23,7 @@ func NewRepositories(db *sqlx.DB) *Repositories {
 		RefreshSession: newRefreshSessionRepository(db),
 		Benefits:       NewBenefitRepository(db),
 		Cities:         newCityRepository(db),
+		Favorite:       NewFavoriteRepository(db),
 	}
 }
 

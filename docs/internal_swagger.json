@@ -99,6 +99,12 @@
                         "description": "Направление сортировки (asc, desc) - по умолчанию desc",
                         "name": "order",
                         "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Показать только избранные льготы (работает только при авторизации, иначе игнорируется)",
+                        "name": "favorites",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -160,6 +166,58 @@
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    }
+                }
+            }
+        },
+        "/benefits/{id}/favorite": {
+            "post": {
+                "security": [
+                    {
+                        "UserAuth": []
+                    }
+                ],
+                "description": "Переключить статус избранной льготы (toggle). Если льгота в избранном - удалит из избранного, если нет - добавит в избранное",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Benefits"
+                ],
+                "summary": "Toggle Benefit Favorite Status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Benefit ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/ErrorStruct"
                         }
@@ -434,10 +492,10 @@
         "ErrorStruct": {
             "type": "object",
             "properties": {
-                "error_code": {
+                "ErrorCode": {
                     "type": "integer"
                 },
-                "error_message": {
+                "ErrorMessage": {
                     "type": "string"
                 }
             }
@@ -465,29 +523,6 @@
                 }
             }
         },
-        "domain.GroupType": {
-            "type": "string",
-            "enum": [
-                "pensioners",
-                "disabled",
-                "young_families",
-                "low_income",
-                "students",
-                "large_families",
-                "children",
-                "veterans"
-            ],
-            "x-enum-varnames": [
-                "UserGroupPensioners",
-                "UserGroupDisabled",
-                "UserGroupYoungFamilies",
-                "UserGroupLowIncome",
-                "UserGroupStudents",
-                "UserGroupLargeFamilies",
-                "UserGroupChildren",
-                "UserGroupVeterans"
-            ]
-        },
         "domain.UserGroup": {
             "type": "object",
             "properties": {
@@ -508,37 +543,16 @@
                     "type": "string"
                 },
                 "status": {
-                    "$ref": "#/definitions/domain.VerificationStatus"
+                    "type": "string"
                 },
                 "type": {
-                    "$ref": "#/definitions/domain.GroupType"
+                    "type": "string"
                 },
                 "verified_at": {
                     "description": "Когда подтверждена",
                     "type": "string"
                 }
             }
-        },
-        "domain.VerificationStatus": {
-            "type": "string",
-            "enum": [
-                "pending",
-                "verified",
-                "rejected",
-                "expired"
-            ],
-            "x-enum-comments": {
-                "VerificationStatusExpired": "Истекла",
-                "VerificationStatusPending": "Ожидает подтверждения",
-                "VerificationStatusRejected": "Отклонена",
-                "VerificationStatusVerified": "Подтверждена"
-            },
-            "x-enum-varnames": [
-                "VerificationStatusPending",
-                "VerificationStatusVerified",
-                "VerificationStatusRejected",
-                "VerificationStatusExpired"
-            ]
         },
         "v1.benefitResponse": {
             "type": "object",
@@ -708,7 +722,7 @@
                 "groups": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/domain.GroupType"
+                        "type": "string"
                     }
                 }
             }

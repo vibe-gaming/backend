@@ -2,8 +2,11 @@ package service
 
 import (
 	"context"
+	"errors"
 	"strings"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/vibe-gaming/backend/internal/domain"
 	"github.com/vibe-gaming/backend/internal/repository"
 )
@@ -12,12 +15,17 @@ import (
 type BenefitFilters = repository.BenefitFilters
 
 type BenefitService struct {
-	benefitRepository repository.BenefitRepository
+	benefitRepository  repository.BenefitRepository
+	favoriteRepository repository.FavoriteRepository
 }
 
-func newBenefitService(benefitRepository repository.BenefitRepository) *BenefitService {
+func newBenefitService(
+	benefitRepository repository.BenefitRepository,
+	favoriteRepository repository.FavoriteRepository,
+) *BenefitService {
 	return &BenefitService{
-		benefitRepository: benefitRepository,
+		benefitRepository:  benefitRepository,
+		favoriteRepository: favoriteRepository,
 	}
 }
 
@@ -96,4 +104,36 @@ func addWildcardsToQuery(query string) string {
 
 func (s *BenefitService) GetByID(ctx context.Context, id string) (*domain.Benefit, error) {
 	return s.benefitRepository.GetByID(ctx, id)
+}
+
+func (s *BenefitService) MarkAsFavorite(ctx context.Context, userID uuid.UUID, benefitID uuid.UUID) error {
+	// Проверяем, существует ли уже запись (включая удаленные)
+	favorite, err := s.favoriteRepository.GetByUserIDAndBenefitID(ctx, userID, benefitID)
+	if err != nil {
+		// Если запись не найдена - создаем новую (добавляем в избранное)
+		if errors.Is(err, domain.ErrNotFound) {
+			return s.favoriteRepository.Create(ctx, &domain.Favorite{
+				ID:        uuid.New(),
+				UserID:    userID,
+				BenefitID: benefitID,
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			})
+		}
+		return err
+	}
+
+	now := time.Now()
+	favorite.UpdatedAt = now
+
+	// Toggle: если активна - удаляем, если удалена - восстанавливаем
+	if favorite.DeletedAt == nil {
+		// Запись активна → удаляем из избранного (soft delete)
+		favorite.DeletedAt = &now
+	} else {
+		// Запись была удалена → восстанавливаем (добавляем обратно в избранное)
+		favorite.DeletedAt = nil
+	}
+
+	return s.favoriteRepository.Update(ctx, favorite)
 }

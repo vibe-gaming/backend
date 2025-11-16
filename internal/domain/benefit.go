@@ -156,3 +156,16 @@ type Benefit struct {
 
 	Views int `db:"views"` // количество просмотров
 }
+
+type Favorite struct {
+	ID        uuid.UUID  `db:"id"`
+	UserID    uuid.UUID  `db:"user_id"`
+	BenefitID uuid.UUID  `db:"benefit_id"`
+	CreatedAt time.Time  `db:"created_at"`
+	UpdatedAt time.Time  `db:"updated_at"`
+	DeletedAt *time.Time `db:"deleted_at"` // nullable
+}
+
+func (f *Favorite) IsDeleted() bool {
+	return f.DeletedAt != nil
+}

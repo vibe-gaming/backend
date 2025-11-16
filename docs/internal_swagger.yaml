@@ -2,9 +2,9 @@ basePath: /api/v1
 definitions:
   ErrorStruct:
     properties:
-      error_code:
+      ErrorCode:
         type: integer
-      error_message:
+      ErrorMessage:
         type: string
     type: object
   domain.City:
@@ -22,26 +22,6 @@ definitions:
       updated_at:
         type: string
     type: object
-  domain.GroupType:
-    enum:
-    - pensioners
-    - disabled
-    - young_families
-    - low_income
-    - students
-    - large_families
-    - children
-    - veterans
-    type: string
-    x-enum-varnames:
-    - UserGroupPensioners
-    - UserGroupDisabled
-    - UserGroupYoungFamilies
-    - UserGroupLowIncome
-    - UserGroupStudents
-    - UserGroupLargeFamilies
-    - UserGroupChildren
-    - UserGroupVeterans
   domain.UserGroup:
     properties:
       error_message:
@@ -57,30 +37,13 @@ definitions:
         description: Когда отклонена
         type: string
       status:
-        $ref: '#/definitions/domain.VerificationStatus'
+        type: string
       type:
-        $ref: '#/definitions/domain.GroupType'
+        type: string
       verified_at:
         description: Когда подтверждена
         type: string
     type: object
-  domain.VerificationStatus:
-    enum:
-    - pending
-    - verified
-    - rejected
-    - expired
-    type: string
-    x-enum-comments:
-      VerificationStatusExpired: Истекла
-      VerificationStatusPending: Ожидает подтверждения
-      VerificationStatusRejected: Отклонена
-      VerificationStatusVerified: Подтверждена
-    x-enum-varnames:
-    - VerificationStatusPending
-    - VerificationStatusVerified
-    - VerificationStatusRejected
-    - VerificationStatusExpired
   v1.benefitResponse:
     properties:
       category:
@@ -189,7 +152,7 @@ definitions:
         type: string
       groups:
         items:
-          $ref: '#/definitions/domain.GroupType'
+          type: string
         type: array
     required:
     - city_id
@@ -275,6 +238,11 @@ paths:
         in: query
         name: order
         type: string
+      - description: Показать только избранные льготы (работает только при авторизации,
+          иначе игнорируется)
+        in: query
+        name: favorites
+        type: boolean
       produces:
       - application/json
       responses:
@@ -324,6 +292,40 @@ paths:
           schema:
             $ref: '#/definitions/ErrorStruct'
       summary: Get Benefit By ID
+      tags:
+      - Benefits
+  /benefits/{id}/favorite:
+    post:
+      consumes:
+      - application/json
+      description: Переключить статус избранной льготы (toggle). Если льгота в избранном
+        - удалит из избранного, если нет - добавит в избранное
+      parameters:
+      - description: Benefit ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+      security:
+      - UserAuth: []
+      summary: Toggle Benefit Favorite Status
       tags:
       - Benefits
   /cities:
