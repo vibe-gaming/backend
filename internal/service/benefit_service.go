@@ -14,6 +14,9 @@ import (
 // BenefitFilters - псевдоним для удобства использования
 type BenefitFilters = repository.BenefitFilters
 
+// FilterStats - псевдоним для удобства использования
+type FilterStats = repository.FilterStats
+
 type BenefitService struct {
 	benefitRepository  repository.BenefitRepository
 	favoriteRepository repository.FavoriteRepository
@@ -136,4 +139,21 @@ func (s *BenefitService) MarkAsFavorite(ctx context.Context, userID uuid.UUID, b
 	}
 
 	return s.favoriteRepository.Update(ctx, favorite)
+}
+
+func (s *BenefitService) GetFilterStats(ctx context.Context, filters *BenefitFilters) (*FilterStats, error) {
+	// Подготавливаем поисковый запрос для частичного поиска (так же как в GetAll)
+	if filters != nil && filters.Search != nil && *filters.Search != "" {
+		if containsBooleanOperators(*filters.Search) {
+			// Пользователь использует свои операторы - не трогаем запрос
+			filters.SearchMode = "boolean"
+		} else {
+			// Для обычного запроса добавляем * к каждому слову для prefix matching
+			processedQuery := addWildcardsToQuery(*filters.Search)
+			filters.Search = &processedQuery
+			filters.SearchMode = "boolean"
+		}
+	}
+
+	return s.benefitRepository.GetFilterStats(ctx, filters)
 }

@@ -125,6 +125,91 @@
                 }
             }
         },
+        "/benefits/stats": {
+            "get": {
+                "description": "Получить статистику по фильтрам - количество льгот по категориям и уровням\n\nПоддерживает те же параметры фильтрации что и GET /benefits (кроме category и type, так как мы их считаем)\nЭто позволяет показывать актуальные счетчики в форме фильтров при изменении других параметров",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Benefits"
+                ],
+                "summary": "Get Benefits Filter Statistics",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID региона для фильтрации",
+                        "name": "region",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "UUID города для фильтрации",
+                        "name": "city_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Целевые группы через запятую",
+                        "name": "target_groups",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Теги через запятую",
+                        "name": "tags",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Дата начала периода (YYYY-MM-DD)",
+                        "name": "date_from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Дата окончания периода (YYYY-MM-DD)",
+                        "name": "date_to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Поисковый запрос",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Учитывать только избранные льготы (работает только при авторизации)",
+                        "name": "favorites",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "object",
+                                "additionalProperties": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    }
+                }
+            }
+        },
         "/benefits/{id}": {
             "get": {
                 "description": "Получить льготу по ID",
@@ -671,6 +756,9 @@
                     "type": "string"
                 },
                 "description": {
+                    "type": "string"
+                },
+                "gis_deeplink": {
                     "type": "string"
                 },
                 "how_to_use": {
