@@ -462,12 +462,6 @@ paths:
       consumes:
       - multipart/form-data
       description: Распознает речь из аудиофайла и возвращает текст
-      parameters:
-      - description: 'Аудиофайл (поддерживаются форматы: ogg (opus), mp3, wav)'
-        in: formData
-        name: audio
-        required: true
-        type: file
       produces:
       - application/json
       responses:
