@@ -2,14 +2,18 @@ package gigachat
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/vibe-gaming/backend/pkg/logger"
+	"go.uber.org/zap"
 )
 
 const (
@@ -45,6 +49,11 @@ func NewClient(authoizationKey string) *Client {
 // SetScope устанавливает scope для клиента
 func (c *Client) SetScope(scope string) {
 	c.scope = scope
+}
+
+// SetClientID устанавливает client ID для клиента
+func (c *Client) SetClientID(clientID string) {
+	c.clientID = clientID
 }
 
 // GetToken получает токен доступа
@@ -186,22 +195,6 @@ func generateUUID() string {
 	return uuid.New().String()
 }
 
-type ChatRequest struct {
-	Model    string    `json:"model"`
-	Messages []Message `json:"messages"`
-}
-
-type Message struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
-}
-
-type ChatResponse struct {
-	Choices []struct {
-		Message Message `json:"message"`
-	} `json:"choices"`
-}
-
 type EnhancedSearchResult struct {
 	OriginalQuery string   `json:"original_query"`
 	EnhancedTerms []string `json:"enhanced_terms"`
@@ -214,12 +207,18 @@ type EnhancedSearchResult struct {
 func (c *Client) EnhanceSearchQuery(ctx context.Context, query string) ([]string, error) {
 	logger.Info("EnhanceSearchQuery called",
 		zap.String("query", query),
-		zap.String("baseURL", c.baseURL),
-		zap.Bool("hasAPIKey", c.apiKey != ""))
+		zap.String("baseURL", baseURL),
+		zap.Bool("hasAPIKey", c.basicAuth != ""))
 
 	if query == "" {
 		logger.Info("Empty query provided to EnhanceSearchQuery")
 		return []string{query}, nil
+	}
+
+	// Проверяем и обновляем токен при необходимости
+	if err := c.ensureValidToken(); err != nil {
+		logger.Error("Failed to ensure valid token", zap.Error(err))
+		return nil, fmt.Errorf("failed to get token: %w", err)
 	}
 
 	// Формируем промпт для GigaChat
@@ -240,7 +239,7 @@ func (c *Client) EnhanceSearchQuery(ctx context.Context, query string) ([]string
 
 Не добавляй нумерацию, точки или другое форматирование, только термины через запятую.`, query)
 
-	reqBody := ChatRequest{
+	reqBody := &ChatRequest{
 		Model: "GigaChat",
 		Messages: []Message{
 			{
@@ -250,45 +249,11 @@ func (c *Client) EnhanceSearchQuery(ctx context.Context, query string) ([]string
 		},
 	}
 
-	jsonData, err := json.Marshal(reqBody)
+	logger.Info("Sending chat request to GigaChat")
+	chatResp, err := c.Chat(reqBody)
 	if err != nil {
-		logger.Error("Failed to marshal GigaChat request", zap.Error(err))
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
-	}
-
-	requestURL := c.baseURL + "/v1/chat/completions"
-	logger.Info("Sending request to GigaChat", zap.String("url", requestURL))
-
-	req, err := http.NewRequestWithContext(ctx, "POST", requestURL, bytes.NewBuffer(jsonData))
-	if err != nil {
-		logger.Error("Failed to create GigaChat request", zap.Error(err))
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+c.apiKey)
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		logger.Error("Failed to send request to GigaChat", zap.Error(err), zap.String("url", requestURL))
-		return nil, fmt.Errorf("failed to send request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	logger.Info("Received response from GigaChat", zap.Int("status_code", resp.StatusCode))
-
-	if resp.StatusCode != http.StatusOK {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		logger.Error("GigaChat returned non-OK status",
-			zap.Int("status_code", resp.StatusCode),
-			zap.String("body", string(bodyBytes)))
-		return nil, fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(bodyBytes))
-	}
-
-	var chatResp ChatResponse
-	if err := json.NewDecoder(resp.Body).Decode(&chatResp); err != nil {
-		logger.Error("Failed to decode GigaChat response", zap.Error(err))
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+		logger.Error("Failed to send chat request", zap.Error(err))
+		return nil, fmt.Errorf("failed to send chat request: %w", err)
 	}
 
 	logger.Info("Successfully decoded GigaChat response", zap.Int("choices_count", len(chatResp.Choices)))
