@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 
@@ -54,14 +55,9 @@ func (h *Handler) parseAudioToText(c *gin.Context) {
 		return
 	}
 
-	text, err := h.gigachatClient.RecognizeSpeech(c.Request.Context(), audioData, file.Filename)
-	if err != nil {
-		logger.Error("failed to recognize speech", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось распознать речь"})
-		return
-	}
+	fmt.Println(audioData)
 
 	c.JSON(http.StatusOK, speechResponse{
-		Text: text,
+		Text: "123123",
 	})
 }

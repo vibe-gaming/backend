@@ -95,7 +95,7 @@ func main() {
 
 	esiaClient := esia.NewClient(cfg.ESIA)
 	socialGroupCheckerClient := socialgroupchecker.NewClient(cfg.SocialGroupChecker.BaseURL)
-	gigachatClient := gigachat.NewClient(cfg.Gigachat)
+	gigachatClient := gigachat.NewClient(cfg.Gigachat.ClientAuthorizationKey)
 
 	// Services, Repos & API Handlers
 	repos := repository.NewRepositories(dbMySQL)
