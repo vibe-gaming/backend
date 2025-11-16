@@ -476,6 +476,29 @@ paths:
       summary: Распознавание речи
       tags:
       - Speech
+  /users/{id}/add-mock-documents:
+    post:
+      consumes:
+      - application/json
+      description: Add mock documents to user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+      summary: Add Mock Documents
+      tags:
+      - Users
   /users/auth/callback:
     get:
       consumes:

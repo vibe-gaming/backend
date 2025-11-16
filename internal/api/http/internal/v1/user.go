@@ -38,7 +38,7 @@ func (h *Handler) initUsersRoutes(api *gin.RouterGroup) {
 	users.GET("/pong", h.userIdentityMiddleware, h.pong)
 	users.GET("/profile", h.userIdentityMiddleware, h.getProfile)
 	users.POST("/update-info", h.userIdentityMiddleware, h.userUpdateInfo)
-
+	users.POST("/:id/add-mock-documents", h.addMockDocuments)
 	// auth routes
 	users.GET("/auth/login", h.authLogin)
 	users.GET("/auth/callback", h.authCallback)
@@ -358,6 +358,72 @@ func (h *Handler) userUpdateInfo(c *gin.Context) {
 		logger.Error("update user info failed", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
+	}
+
+	c.Status(http.StatusOK)
+}
+
+// @Summary Add Mock Documents
+// @Tags Users
+// @Description Add mock documents to user
+// @ModuleID addMockDocuments
+// @Accept  json
+// @Produce  json
+// @Param id path string true "User ID"
+// @Success 200
+// @Failure 400 {object} ErrorStruct
+// @Router /users/{id}/add-mock-documents [post]
+func (h *Handler) addMockDocuments(c *gin.Context) {
+
+	id := c.Param("id")
+	if id == "" {
+		logger.Error("user id is empty")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "user id is required"})
+		return
+	}
+
+	userID, err := uuid.Parse(id)
+	if err != nil {
+		logger.Error("invalid user id", zap.String("id", id), zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
+		return
+	}
+	logger.Info("adding mock documents to user", zap.String("user id", userID.String()))
+
+	documents := []domain.UserDocument{
+		{
+			ID:             uuid.New(),
+			UserID:         userID,
+			DocumentType:   "passport",
+			DocumentNumber: "9800 123456\n выдан МВД по РС(Я) в г. Якутске, 01.01.2014, 140-002",
+			CreatedAt:      time.Now(),
+			UpdatedAt:      time.Now(),
+		},
+		{
+			ID:             uuid.New(),
+			UserID:         userID,
+			DocumentType:   "snils",
+			DocumentNumber: "1234567890",
+			CreatedAt:      time.Now(),
+			UpdatedAt:      time.Now(),
+		},
+		{
+			ID:             uuid.New(),
+			UserID:         userID,
+			DocumentType:   "registration",
+			DocumentNumber: "Республика Саха (Якутия), Якутск, ул. Петра-Алексеева, д. 100, кв.100",
+			CreatedAt:      time.Now(),
+			UpdatedAt:      time.Now(),
+		},
+	}
+
+	for _, document := range documents {
+		err := h.services.Users.CreateDocument(c.Request.Context(), &document)
+		if err != nil {
+			logger.Error("create document failed", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+			return
+		}
 	}
 
 	c.Status(http.StatusOK)

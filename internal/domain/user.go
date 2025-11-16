@@ -96,12 +96,20 @@ type User struct {
 	Documents    []UserDocument
 }
 
+type UserDocumentType string
+
+const (
+	UserDocumentTypePassport     UserDocumentType = "passport"
+	UserDocumentTypeSNILS        UserDocumentType = "snils"
+	UserDocumentTypeRegistration UserDocumentType = "registration"
+)
+
 type UserDocument struct {
-	ID             uuid.UUID  `db:"id" json:"id"`
-	UserID         uuid.UUID  `db:"user_id" json:"user_id"`
-	DocumentType   string     `db:"document_type" json:"document_type"`
-	DocumentNumber string     `db:"document_number" json:"document_number"`
-	CreatedAt      time.Time  `db:"created_at" json:"created_at"`
-	UpdatedAt      time.Time  `db:"updated_at" json:"updated_at"`
-	DeletedAt      *time.Time `db:"deleted_at" json:"deleted_at,omitempty"`
+	ID             uuid.UUID        `db:"id" json:"id"`
+	UserID         uuid.UUID        `db:"user_id" json:"user_id"`
+	DocumentType   UserDocumentType `db:"document_type" json:"document_type"`
+	DocumentNumber string           `db:"document_number" json:"document_number"`
+	CreatedAt      time.Time        `db:"created_at" json:"created_at"`
+	UpdatedAt      time.Time        `db:"updated_at" json:"updated_at"`
+	DeletedAt      *time.Time       `db:"deleted_at" json:"deleted_at,omitempty"`
 }

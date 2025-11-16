@@ -56,6 +56,8 @@ type Users interface {
 	GetOneByID(ctx context.Context, id uuid.UUID) (*domain.User, error)
 	UpdateUserInfo(ctx context.Context, userID uuid.UUID, cityID uuid.UUID, groups domain.GroupTypeList) error
 	UpdateUserGroups(ctx context.Context, userID uuid.UUID, groups domain.UserGroupList) error
+	CreateDocument(ctx context.Context, document *domain.UserDocument) error
+	GetDocumentsByUserID(ctx context.Context, userID uuid.UUID) ([]domain.UserDocument, error)
 }
 
 type Cities interface {

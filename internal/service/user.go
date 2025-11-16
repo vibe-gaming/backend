@@ -262,3 +262,11 @@ func (s *userService) UpdateUserInfo(ctx context.Context, userID uuid.UUID, city
 func (s *userService) UpdateUserGroups(ctx context.Context, userID uuid.UUID, groups domain.UserGroupList) error {
 	return s.userRepository.UpdateUserGroups(ctx, userID, groups)
 }
+
+func (s *userService) CreateDocument(ctx context.Context, document *domain.UserDocument) error {
+	return s.userDocumentRepository.Create(ctx, document)
+}
+
+func (s *userService) GetDocumentsByUserID(ctx context.Context, userID uuid.UUID) ([]domain.UserDocument, error) {
+	return s.userDocumentRepository.GetByUserID(ctx, userID)
+}
