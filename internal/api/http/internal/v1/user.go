@@ -261,17 +261,18 @@ func generateState() string {
 }
 
 type getProfileResponse struct {
-	ID           uuid.UUID            `json:"id"`
-	ExternalID   *string              `json:"external_id" binding:"omitempty"`
-	FirstName    *string              `json:"first_name" binding:"omitempty"`
-	LastName     *string              `json:"last_name" binding:"omitempty"`
-	MiddleName   *string              `json:"middle_name" binding:"omitempty"`
-	SNILS        *string              `json:"snils" binding:"omitempty"`
-	Email        *string              `json:"email" binding:"omitempty"`
-	PhoneNumber  *string              `json:"phone_number" binding:"omitempty"`
-	CityID       *uuid.UUID           `json:"city_id" binding:"omitempty"`
-	Groups       domain.UserGroupList `json:"groups" binding:"omitempty"`
-	RegisteredAt *time.Time           `json:"registered_at" binding:"omitempty"`
+	ID           uuid.UUID             `json:"id"`
+	Documents    []domain.UserDocument `json:"documents" binding:"omitempty"`
+	ExternalID   *string               `json:"external_id" binding:"omitempty"`
+	FirstName    *string               `json:"first_name" binding:"omitempty"`
+	LastName     *string               `json:"last_name" binding:"omitempty"`
+	MiddleName   *string               `json:"middle_name" binding:"omitempty"`
+	SNILS        *string               `json:"snils" binding:"omitempty"`
+	Email        *string               `json:"email" binding:"omitempty"`
+	PhoneNumber  *string               `json:"phone_number" binding:"omitempty"`
+	CityID       *uuid.UUID            `json:"city_id" binding:"omitempty"`
+	Groups       domain.UserGroupList  `json:"groups" binding:"omitempty"`
+	RegisteredAt *time.Time            `json:"registered_at" binding:"omitempty"`
 }
 
 // @Summary Get Profile
@@ -312,6 +313,7 @@ func (h *Handler) getProfile(c *gin.Context) {
 		CityID:       user.CityID,
 		Groups:       user.GroupType,
 		RegisteredAt: user.RegisteredAt,
+		Documents:    user.Documents,
 	}
 
 	c.JSON(http.StatusOK, response)

@@ -632,10 +632,10 @@
         "ErrorStruct": {
             "type": "object",
             "properties": {
-                "error_code": {
+                "ErrorCode": {
                     "type": "integer"
                 },
-                "error_message": {
+                "ErrorMessage": {
                     "type": "string"
                 }
             }
@@ -663,28 +663,31 @@
                 }
             }
         },
-        "domain.GroupType": {
-            "type": "string",
-            "enum": [
-                "pensioners",
-                "disabled",
-                "young_families",
-                "low_income",
-                "students",
-                "large_families",
-                "children",
-                "veterans"
-            ],
-            "x-enum-varnames": [
-                "UserGroupPensioners",
-                "UserGroupDisabled",
-                "UserGroupYoungFamilies",
-                "UserGroupLowIncome",
-                "UserGroupStudents",
-                "UserGroupLargeFamilies",
-                "UserGroupChildren",
-                "UserGroupVeterans"
-            ]
+        "domain.UserDocument": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "deleted_at": {
+                    "type": "string"
+                },
+                "document_number": {
+                    "type": "string"
+                },
+                "document_type": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
         },
         "domain.UserGroup": {
             "type": "object",
@@ -706,37 +709,16 @@
                     "type": "string"
                 },
                 "status": {
-                    "$ref": "#/definitions/domain.VerificationStatus"
+                    "type": "string"
                 },
                 "type": {
-                    "$ref": "#/definitions/domain.GroupType"
+                    "type": "string"
                 },
                 "verified_at": {
                     "description": "Когда подтверждена",
                     "type": "string"
                 }
             }
-        },
-        "domain.VerificationStatus": {
-            "type": "string",
-            "enum": [
-                "pending",
-                "verified",
-                "rejected",
-                "expired"
-            ],
-            "x-enum-comments": {
-                "VerificationStatusExpired": "Истекла",
-                "VerificationStatusPending": "Ожидает подтверждения",
-                "VerificationStatusRejected": "Отклонена",
-                "VerificationStatusVerified": "Подтверждена"
-            },
-            "x-enum-varnames": [
-                "VerificationStatusPending",
-                "VerificationStatusVerified",
-                "VerificationStatusRejected",
-                "VerificationStatusExpired"
-            ]
         },
         "v1.benefitResponse": {
             "type": "object",
@@ -861,6 +843,12 @@
                 "city_id": {
                     "type": "string"
                 },
+                "documents": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.UserDocument"
+                    }
+                },
                 "email": {
                     "type": "string"
                 },
@@ -917,7 +905,7 @@
                 "groups": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/domain.GroupType"
+                        "type": "string"
                     }
                 }
             }

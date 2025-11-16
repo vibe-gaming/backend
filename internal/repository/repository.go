@@ -15,6 +15,7 @@ type Repositories struct {
 	Benefits       BenefitRepository
 	Cities         Cities
 	Favorite       FavoriteRepository
+	UserDocument   UserDocumentRepository
 }
 
 func NewRepositories(db *sqlx.DB) *Repositories {
@@ -24,6 +25,7 @@ func NewRepositories(db *sqlx.DB) *Repositories {
 		Benefits:       NewBenefitRepository(db),
 		Cities:         newCityRepository(db),
 		Favorite:       NewFavoriteRepository(db),
+		UserDocument:   NewUserDocumentRepository(db),
 	}
 }
 
@@ -43,4 +45,11 @@ type RefreshSession interface {
 type Cities interface {
 	GetOneByID(ctx context.Context, id uuid.UUID) (*domain.City, error)
 	GetAll(ctx context.Context) ([]domain.City, error)
+}
+
+type UserDocument interface {
+	Create(ctx context.Context, document *domain.UserDocument) error
+	GetByUserID(ctx context.Context, userID uuid.UUID) ([]domain.UserDocument, error)
+	Update(ctx context.Context, document *domain.UserDocument) error
+	Delete(ctx context.Context, id uuid.UUID) error
 }

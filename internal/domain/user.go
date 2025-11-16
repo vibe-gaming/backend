@@ -93,4 +93,15 @@ type User struct {
 	UpdatedAt    time.Time  `db:"updated_at" json:"updated_at"`
 	DeletedAt    *time.Time `db:"deleted_at" json:"deleted_at,omitempty"`
 	RegisteredAt *time.Time `db:"registered_at" json:"registered_at,omitempty"`
+	Documents    []UserDocument
+}
+
+type UserDocument struct {
+	ID             uuid.UUID  `db:"id" json:"id"`
+	UserID         uuid.UUID  `db:"user_id" json:"user_id"`
+	DocumentType   string     `db:"document_type" json:"document_type"`
+	DocumentNumber string     `db:"document_number" json:"document_number"`
+	CreatedAt      time.Time  `db:"created_at" json:"created_at"`
+	UpdatedAt      time.Time  `db:"updated_at" json:"updated_at"`
+	DeletedAt      *time.Time `db:"deleted_at" json:"deleted_at,omitempty"`
 }

@@ -37,6 +37,7 @@ func NewServices(deps Deps) *Services {
 		Users: newUserService(deps.Repos.Users,
 			deps.Repos.RefreshSession,
 			deps.Repos.Cities,
+			deps.Repos.UserDocument,
 			deps.Hasher,
 			deps.TokenManager,
 			deps.OtpGenerator,

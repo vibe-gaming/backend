@@ -2,9 +2,9 @@ basePath: /api/v1
 definitions:
   ErrorStruct:
     properties:
-      error_code:
+      ErrorCode:
         type: integer
-      error_message:
+      ErrorMessage:
         type: string
     type: object
   domain.City:
@@ -22,26 +22,23 @@ definitions:
       updated_at:
         type: string
     type: object
-  domain.GroupType:
-    enum:
-    - pensioners
-    - disabled
-    - young_families
-    - low_income
-    - students
-    - large_families
-    - children
-    - veterans
-    type: string
-    x-enum-varnames:
-    - UserGroupPensioners
-    - UserGroupDisabled
-    - UserGroupYoungFamilies
-    - UserGroupLowIncome
-    - UserGroupStudents
-    - UserGroupLargeFamilies
-    - UserGroupChildren
-    - UserGroupVeterans
+  domain.UserDocument:
+    properties:
+      created_at:
+        type: string
+      deleted_at:
+        type: string
+      document_number:
+        type: string
+      document_type:
+        type: string
+      id:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: string
+    type: object
   domain.UserGroup:
     properties:
       error_message:
@@ -57,30 +54,13 @@ definitions:
         description: Когда отклонена
         type: string
       status:
-        $ref: '#/definitions/domain.VerificationStatus'
+        type: string
       type:
-        $ref: '#/definitions/domain.GroupType'
+        type: string
       verified_at:
         description: Когда подтверждена
         type: string
     type: object
-  domain.VerificationStatus:
-    enum:
-    - pending
-    - verified
-    - rejected
-    - expired
-    type: string
-    x-enum-comments:
-      VerificationStatusExpired: Истекла
-      VerificationStatusPending: Ожидает подтверждения
-      VerificationStatusRejected: Отклонена
-      VerificationStatusVerified: Подтверждена
-    x-enum-varnames:
-    - VerificationStatusPending
-    - VerificationStatusVerified
-    - VerificationStatusRejected
-    - VerificationStatusExpired
   v1.benefitResponse:
     properties:
       category:
@@ -162,6 +142,10 @@ definitions:
     properties:
       city_id:
         type: string
+      documents:
+        items:
+          $ref: '#/definitions/domain.UserDocument'
+        type: array
       email:
         type: string
       external_id:
@@ -196,7 +180,7 @@ definitions:
         type: string
       groups:
         items:
-          $ref: '#/definitions/domain.GroupType'
+          type: string
         type: array
     required:
     - city_id
