@@ -1,3 +1,4 @@
+basePath: /api/v1
 definitions:
   ErrorStruct:
     properties:
@@ -203,6 +204,9 @@ definitions:
     type: object
 info:
   contact: {}
+  description: Backend API
+  title: Backend API
+  version: "1.0"
 paths:
   /benefits:
     get:
@@ -634,4 +638,13 @@ paths:
       summary: User Update Info
       tags:
       - Users
+securityDefinitions:
+  AdminAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+  UserAuth:
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

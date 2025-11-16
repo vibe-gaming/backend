@@ -938,17 +938,29 @@ const docTemplateinternal = `{
                 }
             }
         }
+    },
+    "securityDefinitions": {
+        "AdminAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        },
+        "UserAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
     }
 }`
 
 // SwaggerInfointernal holds exported Swagger Info so clients can modify it
 var SwaggerInfointernal = &swag.Spec{
-	Version:          "",
+	Version:          "1.0",
 	Host:             "",
-	BasePath:         "",
+	BasePath:         "/api/v1",
 	Schemes:          []string{},
-	Title:            "",
-	Description:      "",
+	Title:            "Backend API",
+	Description:      "Backend API",
 	InfoInstanceName: "internal",
 	SwaggerTemplate:  docTemplateinternal,
 	LeftDelim:        "{{",
