@@ -99,6 +99,9 @@ func (r *benefitRepository) GetByID(ctx context.Context, id string) (*domain.Ben
 }
 
 func (r *benefitRepository) GetAll(ctx context.Context, limit, offset int, filters *BenefitFilters) ([]*domain.Benefit, error) {
+	// Проверяем, есть ли поисковый запрос для расчета релевантности
+	hasSearch := filters != nil && filters.Search != nil && *filters.Search != ""
+
 	query := `
 		SELECT 
 			bin_to_uuid(b.id) as id,
@@ -120,7 +123,16 @@ func (r *benefitRepository) GetAll(ctx context.Context, limit, offset int, filte
 			b.how_to_use,
 			b.source_url,
 			b.tags,
-			b.views
+			b.views`
+
+	// Добавляем поле релевантности, если есть поисковый запрос
+	if hasSearch {
+		// Добавляем score релевантности - будет использоваться для сортировки
+		// Не добавляем в SELECT, т.к. структура Benefit не содержит это поле
+		// Будем использовать MATCH() AGAINST() напрямую в ORDER BY
+	}
+
+	query += `
 		FROM benefit b`
 
 	args := []interface{}{}
@@ -220,33 +232,55 @@ func (r *benefitRepository) GetAll(ctx context.Context, limit, offset int, filte
 	}
 
 	// Сортировка
-	orderBy := "b.created_at"
-	orderDir := "DESC"
+	var orderClause string
 
-	if filters != nil {
-		// Определяем поле для сортировки
-		switch filters.SortBy {
-		case "views":
-			orderBy = "b.views"
-		case "updated_at":
-			orderBy = "b.updated_at"
-		case "created_at":
-			orderBy = "b.created_at"
-		default:
-			orderBy = "b.created_at"
-		}
-
-		// Определяем направление сортировки
-		if filters.Order == "asc" {
-			orderDir = "ASC"
+	// Если есть поисковый запрос, сортируем по релевантности
+	if hasSearch {
+		// Используем MATCH() AGAINST() для расчета релевантности
+		// В Boolean mode релевантность тоже работает, но менее точно
+		// Поэтому дублируем запрос в ORDER BY для получения score
+		if filters.SearchMode == "boolean" {
+			orderClause = fmt.Sprintf("MATCH(b.title, b.description) AGAINST(? IN BOOLEAN MODE) DESC")
+			args = append(args, *filters.Search)
 		} else {
-			orderDir = "DESC"
+			orderClause = fmt.Sprintf("MATCH(b.title, b.description) AGAINST(? IN NATURAL LANGUAGE MODE) DESC")
+			args = append(args, *filters.Search)
 		}
+	} else {
+		// Обычная сортировка без поиска
+		orderBy := "b.created_at"
+		orderDir := "DESC"
+
+		if filters != nil {
+			// Определяем поле для сортировки
+			switch filters.SortBy {
+			case "views":
+				orderBy = "b.views"
+			case "updated_at":
+				orderBy = "b.updated_at"
+			case "created_at":
+				orderBy = "b.created_at"
+			case "relevance":
+				// relevance без поиска не имеет смысла, используем created_at
+				orderBy = "b.created_at"
+			default:
+				orderBy = "b.created_at"
+			}
+
+			// Определяем направление сортировки
+			if filters.Order == "asc" {
+				orderDir = "ASC"
+			} else {
+				orderDir = "DESC"
+			}
+		}
+
+		orderClause = fmt.Sprintf("%s %s", orderBy, orderDir)
 	}
 
 	query += fmt.Sprintf(`
-		ORDER BY %s %s
-		LIMIT ? OFFSET ?`, orderBy, orderDir)
+		ORDER BY %s
+		LIMIT ? OFFSET ?`, orderClause)
 
 	args = append(args, limit, offset)
 

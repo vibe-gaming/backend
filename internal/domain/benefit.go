@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -71,7 +72,31 @@ func (r *RegionList) Scan(value interface{}) error {
 		return fmt.Errorf("failed to scan RegionList: expected []byte, got %T", value)
 	}
 
-	return json.Unmarshal(bytes, r)
+	// Сначала пробуем десериализовать как массив чисел
+	var intArray []int
+	if err := json.Unmarshal(bytes, &intArray); err == nil {
+		*r = intArray
+		return nil
+	}
+
+	// Если не получилось, пробуем как массив строк и конвертируем в числа
+	var stringArray []string
+	if err := json.Unmarshal(bytes, &stringArray); err != nil {
+		return fmt.Errorf("failed to scan RegionList: %w", err)
+	}
+
+	// Конвертируем строки в числа
+	intArray = make([]int, 0, len(stringArray))
+	for _, s := range stringArray {
+		num, err := strconv.Atoi(s)
+		if err != nil {
+			return fmt.Errorf("failed to convert region string '%s' to int: %w", s, err)
+		}
+		intArray = append(intArray, num)
+	}
+
+	*r = intArray
+	return nil
 }
 
 // Value implements driver.Valuer interface
@@ -126,6 +151,8 @@ const (
 	Transport Category = "transport"
 	Food      Category = "food"
 	Clothing  Category = "clothing"
+	Education Category = "education"
+	Payments  Category = "payments"
 	Other     Category = "other"
 )
 
@@ -133,8 +160,8 @@ type Benefit struct {
 	ID          uuid.UUID  `db:"id"`
 	Title       string     `db:"title"`
 	Description string     `db:"description"`
-	ValidFrom   time.Time  `db:"valid_from"`
-	ValidTo     time.Time  `db:"valid_to"`
+	ValidFrom   *time.Time `db:"valid_from"`
+	ValidTo     *time.Time `db:"valid_to"`
 	CreatedAt   time.Time  `db:"created_at"`
 	UpdatedAt   time.Time  `db:"updated_at"`
 	DeletedAt   *time.Time `db:"deleted_at"` // nullable
@@ -178,4 +205,18 @@ func (b *Benefit) GetGisDeeplink() string {
 	longitude := *b.Longitude
 	latitude := *b.Latitude
 	return fmt.Sprintf("https://2gis.ru/geo/%f,%f/zoom/18", longitude, latitude)
+}
+
+func (b *Benefit) GetValidFrom() string {
+	if b.ValidFrom == nil {
+		return ""
+	}
+	return b.ValidFrom.Format("2006-01-02")
+}
+
+func (b *Benefit) GetValidTo() string {
+	if b.ValidTo == nil {
+		return ""
+	}
+	return b.ValidTo.Format("2006-01-02")
 }
