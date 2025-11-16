@@ -100,12 +100,13 @@ func main() {
 	// Services, Repos & API Handlers
 	repos := repository.NewRepositories(dbMySQL)
 	services := service.NewServices(service.Deps{
-		Config:       cfg,
-		Hasher:       hasher,
-		TokenManager: tokenManager,
-		OtpGenerator: otpGenerator,
-		Repos:        repos,
-		EsiaClient:   esiaClient,
+		Config:         cfg,
+		Hasher:         hasher,
+		TokenManager:   tokenManager,
+		OtpGenerator:   otpGenerator,
+		Repos:          repos,
+		EsiaClient:     esiaClient,
+		GigachatClient: gigachatClient,
 	})
 	workers := worker.NewWorkers(worker.Deps{
 		Redis:                    redis,

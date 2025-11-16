@@ -1,9 +1,10 @@
+basePath: /api/v1
 definitions:
   ErrorStruct:
     properties:
-      error_code:
+      ErrorCode:
         type: integer
-      error_message:
+      ErrorMessage:
         type: string
     type: object
   domain.City:
@@ -21,26 +22,6 @@ definitions:
       updated_at:
         type: string
     type: object
-  domain.GroupType:
-    enum:
-    - pensioners
-    - disabled
-    - young_families
-    - low_income
-    - students
-    - large_families
-    - children
-    - veterans
-    type: string
-    x-enum-varnames:
-    - UserGroupPensioners
-    - UserGroupDisabled
-    - UserGroupYoungFamilies
-    - UserGroupLowIncome
-    - UserGroupStudents
-    - UserGroupLargeFamilies
-    - UserGroupChildren
-    - UserGroupVeterans
   domain.UserGroup:
     properties:
       error_message:
@@ -56,30 +37,13 @@ definitions:
         description: Когда отклонена
         type: string
       status:
-        $ref: '#/definitions/domain.VerificationStatus'
+        type: string
       type:
-        $ref: '#/definitions/domain.GroupType'
+        type: string
       verified_at:
         description: Когда подтверждена
         type: string
     type: object
-  domain.VerificationStatus:
-    enum:
-    - pending
-    - verified
-    - rejected
-    - expired
-    type: string
-    x-enum-comments:
-      VerificationStatusExpired: Истекла
-      VerificationStatusPending: Ожидает подтверждения
-      VerificationStatusRejected: Отклонена
-      VerificationStatusVerified: Подтверждена
-    x-enum-varnames:
-    - VerificationStatusPending
-    - VerificationStatusVerified
-    - VerificationStatusRejected
-    - VerificationStatusExpired
   v1.benefitResponse:
     properties:
       category:
@@ -195,7 +159,7 @@ definitions:
         type: string
       groups:
         items:
-          $ref: '#/definitions/domain.GroupType'
+          type: string
         type: array
     required:
     - city_id
@@ -203,6 +167,9 @@ definitions:
     type: object
 info:
   contact: {}
+  description: Backend API
+  title: Backend API
+  version: "1.0"
 paths:
   /benefits:
     get:
@@ -634,4 +601,13 @@ paths:
       summary: User Update Info
       tags:
       - Users
+securityDefinitions:
+  AdminAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+  UserAuth:
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

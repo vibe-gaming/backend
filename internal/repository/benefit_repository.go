@@ -132,7 +132,7 @@ func (r *benefitRepository) GetAll(ctx context.Context, limit, offset int, filte
 			AND f.user_id = UUID_TO_BIN(?) 
 			AND f.deleted_at IS NULL`
 		args = append(args, *filters.UserID)
-		fmt.Printf("DEBUG GetAll: Applying favorites filter for user_id=%s\n", *filters.UserID)
+
 	}
 
 	query += `
@@ -250,16 +250,13 @@ func (r *benefitRepository) GetAll(ctx context.Context, limit, offset int, filte
 
 	args = append(args, limit, offset)
 
-	fmt.Printf("DEBUG GetAll: Final query:\n%s\n", query)
-	fmt.Printf("DEBUG GetAll: Args: %+v\n", args)
-
 	var benefits []*domain.Benefit
 	err := r.db.SelectContext(ctx, &benefits, query, args...)
 	if err != nil {
-		fmt.Printf("DEBUG GetAll: Query error: %v\n", err)
+
 		return nil, err
 	}
-	fmt.Printf("DEBUG GetAll: Found %d benefits\n", len(benefits))
+
 	return benefits, nil
 }
 

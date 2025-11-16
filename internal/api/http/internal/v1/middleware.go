@@ -34,17 +34,14 @@ func (h *Handler) userIdentityMiddleware(c *gin.Context) {
 // Используется для эндпоинтов, которые работают и с авторизацией, и без неё
 func (h *Handler) optionalUserIdentityMiddleware(c *gin.Context) {
 	authHeader := c.GetHeader(authorizationHeader)
-	logger.Info("optionalUserIdentityMiddleware called", 
+	logger.Info("optionalUserIdentityMiddleware called",
 		zap.String("path", c.Request.URL.Path),
 		zap.Bool("has_auth_header", authHeader != ""))
-	
+
 	id, err := h.parseAuthHeader(c)
 	if err == nil {
 		// Если токен валидный - устанавливаем userId в контекст
 		c.Set(userCtx, id)
-		logger.Info("optional auth: user authenticated", zap.String("user_id", id))
-	} else {
-		logger.Info("optional auth: no valid token", zap.Error(err))
 	}
 	// Если ошибка - просто продолжаем без установки userId
 	c.Next()

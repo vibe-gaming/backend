@@ -63,8 +63,7 @@ func (c *Client) ExchangeCodeForToken(code string) (*TokenResponse, error) {
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	logger.Debug("Exchanging code for token", zap.String("url", req.URL.String()))
-
+	
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("do request: %w", err)
