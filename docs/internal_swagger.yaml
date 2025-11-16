@@ -330,6 +330,66 @@ paths:
       summary: Toggle Benefit Favorite Status
       tags:
       - Benefits
+  /benefits/stats:
+    get:
+      consumes:
+      - application/json
+      description: |-
+        Получить статистику по фильтрам - количество льгот по категориям и уровням
+
+        Поддерживает те же параметры фильтрации что и GET /benefits (кроме category и type, так как мы их считаем)
+        Это позволяет показывать актуальные счетчики в форме фильтров при изменении других параметров
+      parameters:
+      - description: ID региона для фильтрации
+        in: query
+        name: region
+        type: integer
+      - description: UUID города для фильтрации
+        in: query
+        name: city_id
+        type: string
+      - description: Целевые группы через запятую
+        in: query
+        name: target_groups
+        type: string
+      - description: Теги через запятую
+        in: query
+        name: tags
+        type: string
+      - description: Дата начала периода (YYYY-MM-DD)
+        in: query
+        name: date_from
+        type: string
+      - description: Дата окончания периода (YYYY-MM-DD)
+        in: query
+        name: date_to
+        type: string
+      - description: Поисковый запрос
+        in: query
+        name: search
+        type: string
+      - description: Учитывать только избранные льготы (работает только при авторизации)
+        in: query
+        name: favorites
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              additionalProperties:
+                type: integer
+              type: object
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+      summary: Get Benefits Filter Statistics
+      tags:
+      - Benefits
   /cities:
     get:
       consumes:

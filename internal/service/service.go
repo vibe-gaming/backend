@@ -62,4 +62,5 @@ type Benefits interface {
 	GetAll(ctx context.Context, page, limit int, filters *repository.BenefitFilters) ([]*domain.Benefit, int64, error)
 	GetByID(ctx context.Context, id string) (*domain.Benefit, error)
 	MarkAsFavorite(ctx context.Context, userID uuid.UUID, benefitID uuid.UUID) error
+	GetFilterStats(ctx context.Context, filters *repository.BenefitFilters) (*repository.FilterStats, error)
 }

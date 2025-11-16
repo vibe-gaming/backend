@@ -32,6 +32,12 @@ type BenefitRepository interface {
 	Count(ctx context.Context, filters *BenefitFilters) (int64, error)
 	Update(ctx context.Context, benefit *domain.Benefit) error
 	Delete(ctx context.Context, id string) error
+	GetFilterStats(ctx context.Context, filters *BenefitFilters) (*FilterStats, error)
+}
+
+type FilterStats struct {
+	Categories map[string]int64 `json:"categories"`
+	Levels     map[string]int64 `json:"levels"`
 }
 
 type benefitRepository struct {
@@ -416,4 +422,137 @@ func (r *benefitRepository) Delete(ctx context.Context, id string) error {
 	}
 
 	return nil
+}
+
+func (r *benefitRepository) GetFilterStats(ctx context.Context, filters *BenefitFilters) (*FilterStats, error) {
+	// Создаем базовый WHERE clause для фильтров (без фильтров по категориям и уровням)
+	baseQuery := `FROM benefit b`
+	baseArgs := []interface{}{}
+
+	// JOIN с таблицей favorite если нужно фильтровать по избранным
+	if filters != nil && filters.UserID != nil {
+		baseQuery += `
+		INNER JOIN favorite f ON b.id = f.benefit_id 
+			AND f.user_id = UUID_TO_BIN(?) 
+			AND f.deleted_at IS NULL`
+		baseArgs = append(baseArgs, *filters.UserID)
+	}
+
+	baseQuery += `
+		WHERE b.deleted_at IS NULL`
+
+	// Применяем фильтры (кроме категорий и типов, так как мы их считаем)
+	if filters != nil {
+		// Фильтр по региону
+		if filters.RegionID != nil {
+			baseQuery += ` AND JSON_CONTAINS(b.region, ?)`
+			baseArgs = append(baseArgs, fmt.Sprintf("%d", *filters.RegionID))
+		}
+
+		// Фильтр по городу
+		if filters.CityID != nil {
+			baseQuery += ` AND b.city_id = UUID_TO_BIN(?)`
+			baseArgs = append(baseArgs, *filters.CityID)
+		}
+
+		// Фильтр по целевым группам
+		if len(filters.TargetGroups) > 0 {
+			baseQuery += ` AND (`
+			for i, group := range filters.TargetGroups {
+				if i > 0 {
+					baseQuery += ` OR `
+				}
+				baseQuery += `JSON_CONTAINS(b.target_group_ids, ?)`
+				baseArgs = append(baseArgs, fmt.Sprintf(`"%s"`, group))
+			}
+			baseQuery += `)`
+		}
+
+		// Фильтр по тегам
+		if len(filters.Tags) > 0 {
+			baseQuery += ` AND (`
+			for i, tag := range filters.Tags {
+				if i > 0 {
+					baseQuery += ` OR `
+				}
+				baseQuery += `JSON_CONTAINS(b.tags, ?)`
+				baseArgs = append(baseArgs, fmt.Sprintf(`"%s"`, tag))
+			}
+			baseQuery += `)`
+		}
+
+		// Фильтр по датам
+		if filters.DateFrom != nil {
+			baseQuery += ` AND b.valid_to >= ?`
+			baseArgs = append(baseArgs, *filters.DateFrom)
+		}
+		if filters.DateTo != nil {
+			baseQuery += ` AND b.valid_from <= ?`
+			baseArgs = append(baseArgs, *filters.DateTo)
+		}
+
+		// Текстовый поиск
+		if filters.Search != nil && *filters.Search != "" {
+			if filters.SearchMode == "boolean" {
+				baseQuery += ` AND MATCH(b.title, b.description) AGAINST(? IN BOOLEAN MODE)`
+			} else {
+				baseQuery += ` AND MATCH(b.title, b.description) AGAINST(? IN NATURAL LANGUAGE MODE)`
+			}
+			baseArgs = append(baseArgs, *filters.Search)
+		}
+	}
+
+	// Запрос для получения статистики по категориям
+	categoriesQuery := `
+		SELECT 
+			COALESCE(b.category, 'unknown') as category, 
+			COUNT(*) as count
+		` + baseQuery + `
+		GROUP BY b.category`
+
+	type categoryResult struct {
+		Category string `db:"category"`
+		Count    int64  `db:"count"`
+	}
+
+	var categoryResults []categoryResult
+	err := r.db.SelectContext(ctx, &categoryResults, categoriesQuery, baseArgs...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get category stats: %w", err)
+	}
+
+	// Запрос для получения статистики по уровням (типам)
+	levelsQuery := `
+		SELECT 
+			b.type as level, 
+			COUNT(*) as count
+		` + baseQuery + `
+		GROUP BY b.type`
+
+	type levelResult struct {
+		Level string `db:"level"`
+		Count int64  `db:"count"`
+	}
+
+	var levelResults []levelResult
+	err = r.db.SelectContext(ctx, &levelResults, levelsQuery, baseArgs...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get level stats: %w", err)
+	}
+
+	// Формируем результат
+	stats := &FilterStats{
+		Categories: make(map[string]int64),
+		Levels:     make(map[string]int64),
+	}
+
+	for _, cr := range categoryResults {
+		stats.Categories[cr.Category] = cr.Count
+	}
+
+	for _, lr := range levelResults {
+		stats.Levels[lr.Level] = lr.Count
+	}
+
+	return stats, nil
 }

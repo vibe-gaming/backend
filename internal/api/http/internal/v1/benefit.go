@@ -18,6 +18,7 @@ func (h *Handler) initBenefits(api *gin.RouterGroup) {
 	benefits := api.Group("/benefits")
 	{
 		benefits.GET("", h.optionalUserIdentityMiddleware, h.getBenefitsList)
+		benefits.GET("/stats", h.optionalUserIdentityMiddleware, h.getBenefitsFilterStats)
 		benefits.GET("/:id", h.getBenefitByID)
 		benefits.POST("/:id/favorite", h.userIdentityMiddleware, h.markBenefitAsFavorite)
 	}
@@ -340,6 +341,86 @@ func (h *Handler) getBenefitByID(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+// @Summary Get Benefits Filter Statistics
+// @Tags Benefits
+// @Description Получить статистику по фильтрам - количество льгот по категориям и уровням
+// @Description
+// @Description Поддерживает те же параметры фильтрации что и GET /benefits (кроме category и type, так как мы их считаем)
+// @Description Это позволяет показывать актуальные счетчики в форме фильтров при изменении других параметров
+// @ModuleID getBenefitsFilterStats
+// @Accept  json
+// @Produce  json
+// @Param region query int false "ID региона для фильтрации"
+// @Param city_id query string false "UUID города для фильтрации"
+// @Param target_groups query string false "Целевые группы через запятую"
+// @Param tags query string false "Теги через запятую"
+// @Param date_from query string false "Дата начала периода (YYYY-MM-DD)"
+// @Param date_to query string false "Дата окончания периода (YYYY-MM-DD)"
+// @Param search query string false "Поисковый запрос"
+// @Param favorites query boolean false "Учитывать только избранные льготы (работает только при авторизации)"
+// @Success 200 {object} map[string]map[string]int64
+// @Failure 500 {object} ErrorStruct
+// @Router /benefits/stats [get]
+func (h *Handler) getBenefitsFilterStats(c *gin.Context) {
+	// Собираем фильтры (те же что и в getBenefitsList, но без категорий и типов)
+	filters := &service.BenefitFilters{}
+
+	if regionStr := c.Query("region"); regionStr != "" {
+		if r, err := strconv.Atoi(regionStr); err == nil && r > 0 {
+			filters.RegionID = &r
+		}
+	}
+
+	if cityID := c.Query("city_id"); cityID != "" {
+		filters.CityID = &cityID
+	}
+
+	if targetGroupsStr := c.Query("target_groups"); targetGroupsStr != "" {
+		groups := strings.Split(targetGroupsStr, ",")
+		for i, group := range groups {
+			groups[i] = strings.TrimSpace(group)
+		}
+		filters.TargetGroups = groups
+	}
+
+	if tagsStr := c.Query("tags"); tagsStr != "" {
+		tags := strings.Split(tagsStr, ",")
+		for i, tag := range tags {
+			tags[i] = strings.TrimSpace(tag)
+		}
+		filters.Tags = tags
+	}
+
+	if dateFrom := c.Query("date_from"); dateFrom != "" {
+		filters.DateFrom = &dateFrom
+	}
+
+	if dateTo := c.Query("date_to"); dateTo != "" {
+		filters.DateTo = &dateTo
+	}
+
+	if search := c.Query("search"); search != "" {
+		filters.Search = &search
+	}
+
+	// Фильтр по избранным (только для авторизованных пользователей)
+	if favoritesStr := c.Query("favorites"); favoritesStr == "true" {
+		if userID, err := h.getUserUUID(c); err == nil {
+			userIDStr := userID.String()
+			filters.UserID = &userIDStr
+		}
+	}
+
+	stats, err := h.services.Benefits.GetFilterStats(c.Request.Context(), filters)
+	if err != nil {
+		logger.Error("failed to get filter stats", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get filter stats"})
+		return
+	}
+
+	c.JSON(http.StatusOK, stats)
 }
 
 // @Summary Toggle Benefit Favorite Status
