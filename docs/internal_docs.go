@@ -379,15 +379,6 @@ const docTemplateinternal = `{
                     "Speech"
                 ],
                 "summary": "Распознавание речи",
-                "parameters": [
-                    {
-                        "type": "file",
-                        "description": "Аудиофайл (поддерживаются форматы: ogg (opus), mp3, wav)",
-                        "name": "audio",
-                        "in": "formData",
-                        "required": true
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "Распознанный текст",
