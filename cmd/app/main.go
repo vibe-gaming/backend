@@ -23,7 +23,6 @@ import (
 	"github.com/vibe-gaming/backend/internal/service"
 	"github.com/vibe-gaming/backend/internal/service/gigachat"
 	socialgroupchecker "github.com/vibe-gaming/backend/internal/service/social_group_checker"
-	"github.com/vibe-gaming/backend/internal/service/yandexgpt"
 	"github.com/vibe-gaming/backend/internal/worker"
 	"github.com/vibe-gaming/backend/pkg/auth"
 	"github.com/vibe-gaming/backend/pkg/email/smtp"
@@ -98,7 +97,6 @@ func main() {
 	socialGroupCheckerClient := socialgroupchecker.NewClient(cfg.SocialGroupChecker.BaseURL)
 	gigachatClient := gigachat.NewClient(cfg.Gigachat.ClientAuthorizationKey)
 	gigachatClient.SetClientID(cfg.Gigachat.ClientID)
-	yandexClient := yandexgpt.NewClient(cfg.Yandex.APIKey, cfg.Yandex.FolderID, cfg.Yandex.Lang)
 
 	// Services, Repos & API Handlers
 	repos := repository.NewRepositories(dbMySQL)
@@ -118,7 +116,7 @@ func main() {
 		Config:                   cfg,
 		SocialGroupCheckerClient: socialGroupCheckerClient,
 	})
-	handlers := apiHttp.NewHandlers(services, tokenManager, cfg, esiaClient, gigachatClient, yandexClient)
+	handlers := apiHttp.NewHandlers(services, tokenManager, cfg, esiaClient, gigachatClient)
 
 	// HTTP Server
 	srv := server.NewServer(cfg, handlers.Init(cfg))

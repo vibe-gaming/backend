@@ -5,7 +5,6 @@ import (
 	"github.com/vibe-gaming/backend/internal/esia"
 	"github.com/vibe-gaming/backend/internal/service"
 	"github.com/vibe-gaming/backend/internal/service/gigachat"
-	"github.com/vibe-gaming/backend/internal/service/yandexgpt"
 	"github.com/vibe-gaming/backend/pkg/auth"
 
 	"github.com/gin-gonic/gin"
@@ -31,7 +30,6 @@ type Handler struct {
 	config         *config.Config
 	esiaClient     *esia.Client
 	gigachatClient *gigachat.Client
-	yandexClient   *yandexgpt.Client
 }
 
 func NewHandler(
@@ -40,7 +38,6 @@ func NewHandler(
 	config *config.Config,
 	esiaClient *esia.Client,
 	gigachatClient *gigachat.Client,
-	yandexClient *yandexgpt.Client,
 ) *Handler {
 	return &Handler{
 		services:       services,
@@ -48,7 +45,6 @@ func NewHandler(
 		config:         config,
 		esiaClient:     esiaClient,
 		gigachatClient: gigachatClient,
-		yandexClient:   yandexClient,
 	}
 }
 

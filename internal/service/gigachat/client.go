@@ -154,7 +154,7 @@ func (c *Client) SendBytes(query []byte) ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("ошибка чтения ответа: %w", err)
 		} else {
-			return body, fmt.Errorf("Некорректный статус ответа: %v", resp.Status)
+			return body, fmt.Errorf("некорректный статус ответа: %v", resp.Status)
 		}
 	}
 
@@ -415,16 +415,15 @@ func (c *Client) TranscribeAudio(ctx context.Context, fileID string) (string, er
 	}
 
 	// Формируем запрос к чату с прикрепленным файлом
-	reqBody := &ChatRequestWithAttachments{
-		Model: ModelGigaChat, // Используем базовую модель
+	reqBody := &ChatRequest{
+		Model: ModelGigaChatPro,
 		Messages: []Message{
 			{
-				Role:    RoleUser,
-				Content: "Распознай, пожалуйста, речь в прикреплённом аудиофайле и верни текст без лишних пояснений.",
+				Role:        RoleUser,
+				Content:     "Распознай речь из прикреплённого аудиофайла и верни только текст, который был произнесён, без лишних пояснений.",
+				Attachments: []string{fileID},
 			},
 		},
-		Attachments: []string{fileID},
-		Stream:      false,
 	}
 
 	jsonData, err := json.Marshal(reqBody)
@@ -432,6 +431,8 @@ func (c *Client) TranscribeAudio(ctx context.Context, fileID string) (string, er
 		logger.Error("Failed to marshal request", zap.Error(err))
 		return "", fmt.Errorf("ошибка маршалинга запроса: %w", err)
 	}
+
+	logger.Info("Sending transcription request", zap.String("request_json", string(jsonData)))
 
 	// Создаем запрос
 	httpReq, err := http.NewRequest("POST", fmt.Sprintf("%s/chat/completions", baseURL), bytes.NewReader(jsonData))
@@ -461,6 +462,8 @@ func (c *Client) TranscribeAudio(ctx context.Context, fileID string) (string, er
 		logger.Error("Failed to read response", zap.Error(err))
 		return "", fmt.Errorf("ошибка чтения ответа: %w", err)
 	}
+
+	logger.Info("Received transcription response", zap.String("response_json", string(responseBody)))
 
 	// Проверяем статус
 	if resp.StatusCode != http.StatusOK {
