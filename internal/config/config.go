@@ -103,8 +103,8 @@ type SocialGroupCheckerConfig struct {
 }
 
 type GigachatConfig struct {
-	BaseURL string `env:"GIGACHAT_BASE_URL" env-default:"https://api.gigachat.com"`
-	APIKey  string `env:"GIGACHAT_API_KEY" env-default:""`
+	ClientID               string `env:"GIGACHAT_CLIENT_ID" env-default:""`
+	ClientAuthorizationKey string `env:"GIGACHAT_AUTHORIZATION_KEY" env-default:""`
 }
 
 func MustLoad() *Config {
