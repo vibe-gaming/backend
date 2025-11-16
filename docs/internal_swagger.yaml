@@ -54,6 +54,8 @@ definitions:
         type: string
       description:
         type: string
+      gis_deeplink:
+        type: string
       how_to_use:
         type: string
       id:

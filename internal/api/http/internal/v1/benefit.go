@@ -43,6 +43,7 @@ type benefitResponse struct {
 	SourceURL    string   `json:"source_url"`
 	Tags         []string `json:"tags"`
 	Views        int      `json:"views"`
+	GisDeeplink  string   `json:"gis_deeplink,omitempty"`
 }
 
 type benefitsListResponse struct {
@@ -255,6 +256,7 @@ func (h *Handler) getBenefitsList(c *gin.Context) {
 			SourceURL:    benefit.SourceURL,
 			Tags:         tags,
 			Views:        benefit.Views,
+			GisDeeplink:  benefit.GetGisDeeplink(),
 		})
 	}
 

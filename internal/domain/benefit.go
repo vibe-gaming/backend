@@ -169,3 +169,13 @@ type Favorite struct {
 func (f *Favorite) IsDeleted() bool {
 	return f.DeletedAt != nil
 }
+
+func (b *Benefit) GetGisDeeplink() string {
+
+	if b.Longitude == nil || b.Latitude == nil {
+		return ""
+	}
+	longitude := *b.Longitude
+	latitude := *b.Latitude
+	return fmt.Sprintf("https://2gis.ru/geo/%f,%f/zoom/18", longitude, latitude)
+}

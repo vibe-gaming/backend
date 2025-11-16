@@ -577,6 +577,9 @@ const docTemplateinternal = `{
                 "description": {
                     "type": "string"
                 },
+                "gis_deeplink": {
+                    "type": "string"
+                },
                 "how_to_use": {
                     "type": "string"
                 },
