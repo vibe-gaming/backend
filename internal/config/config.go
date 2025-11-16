@@ -20,6 +20,7 @@ type Config struct {
 	Cache              Cache
 	ESIA               ESIAConfig
 	SocialGroupChecker SocialGroupCheckerConfig
+	Gigachat           GigachatConfig
 }
 
 type HttpServer struct {
@@ -99,6 +100,11 @@ type ESIAConfig struct {
 
 type SocialGroupCheckerConfig struct {
 	BaseURL string `env:"SOCIAL_GROUP_CHECKER_BASE_URL" env-default:"https://social-group-checker-mock-production.up.railway.app"`
+}
+
+type GigachatConfig struct {
+	BaseURL string `env:"GIGACHAT_BASE_URL" env-default:"https://api.gigachat.com"`
+	APIKey  string `env:"GIGACHAT_API_KEY" env-default:""`
 }
 
 func MustLoad() *Config {

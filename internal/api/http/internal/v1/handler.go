@@ -4,6 +4,7 @@ import (
 	"github.com/vibe-gaming/backend/internal/config"
 	"github.com/vibe-gaming/backend/internal/esia"
 	"github.com/vibe-gaming/backend/internal/service"
+	"github.com/vibe-gaming/backend/internal/service/gigachat"
 	"github.com/vibe-gaming/backend/pkg/auth"
 
 	"github.com/gin-gonic/gin"
@@ -24,10 +25,11 @@ import (
 // @name Authorization
 
 type Handler struct {
-	services     *service.Services
-	tokenManager auth.TokenManager
-	config       *config.Config
-	esiaClient   *esia.Client
+	services       *service.Services
+	tokenManager   auth.TokenManager
+	config         *config.Config
+	esiaClient     *esia.Client
+	gigachatClient *gigachat.Client
 }
 
 func NewHandler(
@@ -35,12 +37,14 @@ func NewHandler(
 	tokenManager auth.TokenManager,
 	config *config.Config,
 	esiaClient *esia.Client,
+	gigachatClient *gigachat.Client,
 ) *Handler {
 	return &Handler{
-		services:     services,
-		tokenManager: tokenManager,
-		config:       config,
-		esiaClient:   esiaClient,
+		services:       services,
+		tokenManager:   tokenManager,
+		config:         config,
+		esiaClient:     esiaClient,
+		gigachatClient: gigachatClient,
 	}
 }
 
@@ -50,4 +54,5 @@ func (h *Handler) Init(api *gin.RouterGroup) {
 	h.initUsersRoutes(v1)
 	h.initBenefits(v1)
 	h.initCitiesRoutes(v1)
+	h.initSpeechRoutes(v1)
 }

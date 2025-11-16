@@ -146,7 +146,6 @@ func (h *Handler) authCallback(c *gin.Context) {
 	logger.Info("Authorization code received", zap.String("code", code[:10]+"..."))
 
 	// Редиректим на фронтенд с code и state
-	// Токены НЕ передаются в URL - это безопасно!
 	frontendURL := fmt.Sprintf(
 		"%s/%s/?code=%s&state=%s",
 		h.config.FrontendURL,

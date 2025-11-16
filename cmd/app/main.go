@@ -21,6 +21,7 @@ import (
 	"github.com/vibe-gaming/backend/internal/repository"
 	"github.com/vibe-gaming/backend/internal/server"
 	"github.com/vibe-gaming/backend/internal/service"
+	"github.com/vibe-gaming/backend/internal/service/gigachat"
 	socialgroupchecker "github.com/vibe-gaming/backend/internal/service/social_group_checker"
 	"github.com/vibe-gaming/backend/internal/worker"
 	"github.com/vibe-gaming/backend/pkg/auth"
@@ -94,6 +95,7 @@ func main() {
 
 	esiaClient := esia.NewClient(cfg.ESIA)
 	socialGroupCheckerClient := socialgroupchecker.NewClient(cfg.SocialGroupChecker.BaseURL)
+	gigachatClient := gigachat.NewClient(cfg.Gigachat)
 
 	// Services, Repos & API Handlers
 	repos := repository.NewRepositories(dbMySQL)
@@ -112,7 +114,7 @@ func main() {
 		Config:                   cfg,
 		SocialGroupCheckerClient: socialGroupCheckerClient,
 	})
-	handlers := apiHttp.NewHandlers(services, tokenManager, cfg, esiaClient)
+	handlers := apiHttp.NewHandlers(services, tokenManager, cfg, esiaClient, gigachatClient)
 
 	// HTTP Server
 	srv := server.NewServer(cfg, handlers.Init(cfg))

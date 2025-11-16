@@ -1,10 +1,9 @@
-basePath: /api/v1
 definitions:
   ErrorStruct:
     properties:
-      ErrorCode:
+      error_code:
         type: integer
-      ErrorMessage:
+      error_message:
         type: string
     type: object
   domain.City:
@@ -22,6 +21,26 @@ definitions:
       updated_at:
         type: string
     type: object
+  domain.GroupType:
+    enum:
+    - pensioners
+    - disabled
+    - young_families
+    - low_income
+    - students
+    - large_families
+    - children
+    - veterans
+    type: string
+    x-enum-varnames:
+    - UserGroupPensioners
+    - UserGroupDisabled
+    - UserGroupYoungFamilies
+    - UserGroupLowIncome
+    - UserGroupStudents
+    - UserGroupLargeFamilies
+    - UserGroupChildren
+    - UserGroupVeterans
   domain.UserGroup:
     properties:
       error_message:
@@ -37,13 +56,30 @@ definitions:
         description: Когда отклонена
         type: string
       status:
-        type: string
+        $ref: '#/definitions/domain.VerificationStatus'
       type:
-        type: string
+        $ref: '#/definitions/domain.GroupType'
       verified_at:
         description: Когда подтверждена
         type: string
     type: object
+  domain.VerificationStatus:
+    enum:
+    - pending
+    - verified
+    - rejected
+    - expired
+    type: string
+    x-enum-comments:
+      VerificationStatusExpired: Истекла
+      VerificationStatusPending: Ожидает подтверждения
+      VerificationStatusRejected: Отклонена
+      VerificationStatusVerified: Подтверждена
+    x-enum-varnames:
+    - VerificationStatusPending
+    - VerificationStatusVerified
+    - VerificationStatusRejected
+    - VerificationStatusExpired
   v1.benefitResponse:
     properties:
       category:
@@ -146,13 +182,18 @@ definitions:
       snils:
         type: string
     type: object
+  v1.speechResponse:
+    properties:
+      text:
+        type: string
+    type: object
   v1.userUpdateInfoRequest:
     properties:
       city_id:
         type: string
       groups:
         items:
-          type: string
+          $ref: '#/definitions/domain.GroupType'
         type: array
     required:
     - city_id
@@ -160,9 +201,6 @@ definitions:
     type: object
 info:
   contact: {}
-  description: Backend API
-  title: Backend API
-  version: "1.0"
 paths:
   /benefits:
     get:
@@ -353,6 +391,47 @@ paths:
       summary: Get Cities
       tags:
       - Cities
+  /speech/recognize:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Распознает речь из аудиофайла и возвращает текст
+      parameters:
+      - description: 'Аудиофайл (поддерживаются форматы: wav, mp3, ogg)'
+        in: formData
+        name: audio
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Распознанный текст
+          schema:
+            $ref: '#/definitions/v1.speechResponse'
+        "400":
+          description: Ошибка валидации
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Не авторизован
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - UserAuth: []
+      summary: Распознавание речи
+      tags:
+      - Speech
   /users/auth/callback:
     get:
       consumes:
@@ -493,13 +572,4 @@ paths:
       summary: User Update Info
       tags:
       - Users
-securityDefinitions:
-  AdminAuth:
-    in: header
-    name: Authorization
-    type: apiKey
-  UserAuth:
-    in: header
-    name: Authorization
-    type: apiKey
 swagger: "2.0"
