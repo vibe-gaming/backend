@@ -35,20 +35,23 @@ func NewGenerator() *Generator {
 		"./backend/fonts/DejaVuSans.ttf", // Alternative development path
 	}
 
-	var loadedPath string
 	for _, path := range fontPaths {
-		if _, err := os.Stat(path); err == nil {
+		fmt.Printf("🔍 PDF: Checking font path: %s\n", path)
+		if stat, err := os.Stat(path); err == nil {
+			fmt.Printf("📁 PDF: File exists at %s (size: %d bytes)\n", path, stat.Size())
 			if err := pdf.AddTTFFont(fontName, path); err == nil {
 				hasFont = true
-				loadedPath = path
+				fmt.Printf("✅ PDF: Font successfully loaded from %s\n", path)
 				break
+			} else {
+				fmt.Printf("❌ PDF: Failed to load font from %s: %v\n", path, err)
 			}
+		} else {
+			fmt.Printf("❌ PDF: File not found at %s: %v\n", path, err)
 		}
 	}
 
-	if hasFont {
-		fmt.Printf("✅ PDF: Font loaded from %s\n", loadedPath)
-	} else {
+	if !hasFont {
 		fmt.Printf("⚠️  PDF: Font not found in any of the paths: %v\n", fontPaths)
 	}
 
@@ -63,7 +66,7 @@ func NewGenerator() *Generator {
 func (g *Generator) GenerateBenefitPDF(benefit *domain.Benefit) ([]byte, error) {
 	// Проверяем, загружен ли шрифт
 	if !g.hasFont {
-		return nil, fmt.Errorf("TTF font not loaded. Please ensure DejaVuSans.ttf is in ./fonts/ directory")
+		return nil, fmt.Errorf("TTF font not loaded. Font should be at /app/fonts/DejaVuSans.ttf (production) or ./fonts/DejaVuSans.ttf (development)")
 	}
 
 	// Добавляем страницу
@@ -279,7 +282,7 @@ func (g *Generator) getCategoryText(cat domain.Category) string {
 func (g *Generator) GeneratePensionerCertificatePDF(user *domain.User) ([]byte, error) {
 	// Проверяем, загружен ли шрифт
 	if !g.hasFont {
-		return nil, fmt.Errorf("TTF font not loaded. Please ensure DejaVuSans.ttf is in ./fonts/ directory")
+		return nil, fmt.Errorf("TTF font not loaded. Font should be at /app/fonts/DejaVuSans.ttf (production) or ./fonts/DejaVuSans.ttf (development)")
 	}
 
 	// Добавляем страницу

@@ -2,13 +2,23 @@
 
 Эта директория содержит TTF шрифты для генерации PDF с поддержкой кириллицы.
 
+## Автоматическая установка
+
+**При сборке Docker образа** шрифт автоматически скачивается из официального репозитория:
+
+```dockerfile
+RUN curl -L -o /app/fonts/DejaVuSans.ttf "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf"
+```
+
+Источник: https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf
+
 ## Установленные шрифты
 
 - **DejaVuSans.ttf** - основной шрифт с полной поддержкой кириллицы
 
-## Скачивание шрифта вручную
+## Скачивание шрифта для локальной разработки
 
-Если шрифта нет, скачайте его:
+Для локальной разработки вне Docker:
 
 ```bash
 cd fonts

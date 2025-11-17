@@ -27,15 +27,29 @@ COPY --from=builder /build/main .
 # Создаём папку для шрифтов и скачиваем DejaVu Sans
 RUN mkdir -p /app/fonts && \
     curl -L -o /app/fonts/DejaVuSans.ttf "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf" && \
-    ls -la /app/fonts/ && \
-    echo "✅ Font downloaded successfully"
+    echo "📁 Font directory contents:" && \
+    ls -lh /app/fonts/ && \
+    echo "✅ Font file info:" && \
+    file /app/fonts/DejaVuSans.ttf && \
+    echo "📊 Font file size:" && \
+    du -h /app/fonts/DejaVuSans.ttf && \
+    chmod 644 /app/fonts/DejaVuSans.ttf && \
+    echo "✅ Font downloaded and permissions set"
 
 # Создаем непривилегированного пользователя
 RUN addgroup -g 1000 appuser && \
     adduser -D -u 1000 -G appuser appuser && \
-    chown -R appuser:appuser /app
+    chown -R appuser:appuser /app && \
+    echo "👤 User created and permissions set:" && \
+    ls -la /app/
 
 USER appuser
+
+# Проверяем доступность шрифта из-под appuser
+RUN echo "🔍 Checking font access as appuser:" && \
+    ls -la /app/fonts/ && \
+    test -r /app/fonts/DejaVuSans.ttf && \
+    echo "✅ Font is readable by appuser"
 
 EXPOSE 8080
 
