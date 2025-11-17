@@ -10,19 +10,21 @@ import (
 )
 
 type BenefitFilters struct {
-	RegionID     *int
-	CityID       *string
-	Type         *string
-	TargetGroups []string
-	Tags         []string
-	Categories   []string
-	DateFrom     *string
-	DateTo       *string
-	Search       *string
-	SearchMode   string  // "natural" или "boolean"
-	SortBy       string  // "created_at", "views", "updated_at"
-	Order        string  // "asc", "desc"
-	UserID       *string // UUID пользователя для фильтрации избранных (favorites=true)
+	RegionID           *int
+	CityID             *string
+	Type               *string
+	TargetGroups       []string
+	Tags               []string
+	Categories         []string
+	DateFrom           *string
+	DateTo             *string
+	Search             *string
+	SearchMode         string   // "natural" или "boolean"
+	SortBy             string   // "created_at", "views", "updated_at"
+	Order              string   // "asc", "desc"
+	UserID             *string  // UUID пользователя для фильтрации избранных (favorites=true)
+	FilterByUserGroups *bool    // Фильтровать по группам пользователя
+	UserGroupTypes     []string // Подтвержденные группы пользователя для фильтрации
 }
 
 type UserBenefitsStats struct {
@@ -189,6 +191,24 @@ func (r *benefitRepository) GetAll(ctx context.Context, limit, offset int, filte
 			query += `)`
 		}
 
+		// Фильтр по группам пользователя (показать только доступные пользователю льготы)
+		if filters.FilterByUserGroups != nil && *filters.FilterByUserGroups {
+			if len(filters.UserGroupTypes) > 0 {
+				query += ` AND (`
+				for i, group := range filters.UserGroupTypes {
+					if i > 0 {
+						query += ` OR `
+					}
+					query += `JSON_CONTAINS(b.target_group_ids, ?)`
+					args = append(args, fmt.Sprintf(`"%s"`, group))
+				}
+				query += `)`
+			} else {
+				// Если фильтр включен, но у пользователя нет групп - вернуть пустой результат
+				query += ` AND FALSE`
+			}
+		}
+
 		// Фильтр по тегам (хотя бы один тег должен совпадать)
 		if len(filters.Tags) > 0 {
 			query += ` AND (`
@@ -352,6 +372,24 @@ func (r *benefitRepository) Count(ctx context.Context, filters *BenefitFilters) 
 			query += `)`
 		}
 
+		// Фильтр по группам пользователя (показать только доступные пользователю льготы)
+		if filters.FilterByUserGroups != nil && *filters.FilterByUserGroups {
+			if len(filters.UserGroupTypes) > 0 {
+				query += ` AND (`
+				for i, group := range filters.UserGroupTypes {
+					if i > 0 {
+						query += ` OR `
+					}
+					query += `JSON_CONTAINS(b.target_group_ids, ?)`
+					args = append(args, fmt.Sprintf(`"%s"`, group))
+				}
+				query += `)`
+			} else {
+				// Если фильтр включен, но у пользователя нет групп - вернуть пустой результат
+				query += ` AND FALSE`
+			}
+		}
+
 		// Фильтр по тегам
 		if len(filters.Tags) > 0 {
 			query += ` AND (`
@@ -503,6 +541,24 @@ func (r *benefitRepository) GetFilterStats(ctx context.Context, filters *Benefit
 				baseArgs = append(baseArgs, fmt.Sprintf(`"%s"`, group))
 			}
 			baseQuery += `)`
+		}
+
+		// Фильтр по группам пользователя (показать только доступные пользователю льготы)
+		if filters.FilterByUserGroups != nil && *filters.FilterByUserGroups {
+			if len(filters.UserGroupTypes) > 0 {
+				baseQuery += ` AND (`
+				for i, group := range filters.UserGroupTypes {
+					if i > 0 {
+						baseQuery += ` OR `
+					}
+					baseQuery += `JSON_CONTAINS(b.target_group_ids, ?)`
+					baseArgs = append(baseArgs, fmt.Sprintf(`"%s"`, group))
+				}
+				baseQuery += `)`
+			} else {
+				// Если фильтр включен, но у пользователя нет групп - вернуть пустой результат
+				baseQuery += ` AND FALSE`
+			}
 		}
 
 		// Фильтр по тегам

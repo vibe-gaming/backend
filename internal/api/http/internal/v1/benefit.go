@@ -86,6 +86,7 @@ type benefitsListResponse struct {
 // @Param sort_by query string false "Поле для сортировки (created_at, views, updated_at) - по умолчанию created_at"
 // @Param order query string false "Направление сортировки (asc, desc) - по умолчанию desc"
 // @Param favorites query boolean false "Показать только избранные льготы (работает только при авторизации, иначе игнорируется)"
+// @Param filter_by_user_groups query boolean false "Фильтровать льготы по группам пользователя (работает только при авторизации)"
 // @Success 200 {object} benefitsListResponse
 // @Failure 400 {object} ErrorStruct
 // @Failure 500 {object} ErrorStruct
@@ -171,6 +172,52 @@ func (h *Handler) getBenefitsList(c *gin.Context) {
 			logger.Info("favorites filter applied", zap.String("user_id", userIDStr))
 		} else {
 			logger.Info("favorites filter requested but user not authenticated", zap.Error(err))
+		}
+	}
+
+	// Фильтр по группам пользователя (только для авторизованных пользователей)
+	if filterByUserGroupsStr := c.Query("filter_by_user_groups"); filterByUserGroupsStr == "true" {
+		if userID, err := h.getUserUUID(c); err == nil {
+			logger.Info("filter_by_user_groups=true received", zap.String("user_id", userID.String()))
+
+			// Получаем пользователя из репозитория
+			user, err := h.services.Users.GetOneByID(c.Request.Context(), userID)
+			if err != nil {
+				logger.Error("failed to get user for group filtering", zap.Error(err), zap.String("user_id", userID.String()))
+			} else {
+				logger.Info("user retrieved successfully",
+					zap.String("user_id", userID.String()),
+					zap.Int("total_groups", len(user.GroupType)))
+
+				// Собираем подтвержденные группы пользователя
+				verifiedGroups := []string{}
+				for _, group := range user.GroupType {
+					logger.Info("processing user group",
+						zap.String("group_type", string(group.Type)),
+						zap.String("status", string(group.Status)))
+
+					if group.Status == domain.VerificationStatusVerified {
+						verifiedGroups = append(verifiedGroups, string(group.Type))
+					}
+				}
+
+				// Всегда применяем фильтр, даже если групп нет
+				// Если групп нет - вернется пустой результат
+				filterByUserGroups := true
+				filters.FilterByUserGroups = &filterByUserGroups
+				filters.UserGroupTypes = verifiedGroups
+
+				if len(verifiedGroups) > 0 {
+					logger.Info("user groups filter applied",
+						zap.String("user_id", userID.String()),
+						zap.Strings("verified_groups", verifiedGroups))
+				} else {
+					logger.Info("user has no verified groups, filter will return empty results",
+						zap.String("user_id", userID.String()))
+				}
+			}
+		} else {
+			logger.Info("filter_by_user_groups requested but user not authenticated", zap.Error(err))
 		}
 	}
 
@@ -362,6 +409,7 @@ func (h *Handler) getBenefitByID(c *gin.Context) {
 // @Param date_to query string false "Дата окончания периода (YYYY-MM-DD)"
 // @Param search query string false "Поисковый запрос"
 // @Param favorites query boolean false "Учитывать только избранные льготы (работает только при авторизации)"
+// @Param filter_by_user_groups query boolean false "Фильтровать льготы по группам пользователя (работает только при авторизации)"
 // @Success 200 {object} map[string]map[string]int64
 // @Failure 500 {object} ErrorStruct
 // @Router /benefits/stats [get]
@@ -412,6 +460,52 @@ func (h *Handler) getBenefitsFilterStats(c *gin.Context) {
 		if userID, err := h.getUserUUID(c); err == nil {
 			userIDStr := userID.String()
 			filters.UserID = &userIDStr
+		}
+	}
+
+	// Фильтр по группам пользователя (только для авторизованных пользователей)
+	if filterByUserGroupsStr := c.Query("filter_by_user_groups"); filterByUserGroupsStr == "true" {
+		if userID, err := h.getUserUUID(c); err == nil {
+			logger.Info("filter_by_user_groups=true received in stats", zap.String("user_id", userID.String()))
+
+			// Получаем пользователя из репозитория
+			user, err := h.services.Users.GetOneByID(c.Request.Context(), userID)
+			if err != nil {
+				logger.Error("failed to get user for group filtering in stats", zap.Error(err), zap.String("user_id", userID.String()))
+			} else {
+				logger.Info("user retrieved successfully in stats",
+					zap.String("user_id", userID.String()),
+					zap.Int("total_groups", len(user.GroupType)))
+
+				// Собираем подтвержденные группы пользователя
+				verifiedGroups := []string{}
+				for _, group := range user.GroupType {
+					logger.Info("processing user group in stats",
+						zap.String("group_type", string(group.Type)),
+						zap.String("status", string(group.Status)))
+
+					if group.Status == domain.VerificationStatusVerified {
+						verifiedGroups = append(verifiedGroups, string(group.Type))
+					}
+				}
+
+				// Всегда применяем фильтр, даже если групп нет
+				// Если групп нет - вернется пустой результат
+				filterByUserGroups := true
+				filters.FilterByUserGroups = &filterByUserGroups
+				filters.UserGroupTypes = verifiedGroups
+
+				if len(verifiedGroups) > 0 {
+					logger.Info("user groups filter applied in stats",
+						zap.String("user_id", userID.String()),
+						zap.Strings("verified_groups", verifiedGroups))
+				} else {
+					logger.Info("user has no verified groups in stats, filter will return empty results",
+						zap.String("user_id", userID.String()))
+				}
+			}
+		} else {
+			logger.Info("filter_by_user_groups requested in stats but user not authenticated", zap.Error(err))
 		}
 	}
 

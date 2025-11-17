@@ -278,6 +278,11 @@ paths:
         in: query
         name: favorites
         type: boolean
+      - description: Фильтровать льготы по группам пользователя (работает только при
+          авторизации)
+        in: query
+        name: filter_by_user_groups
+        type: boolean
       produces:
       - application/json
       responses:
@@ -404,6 +409,11 @@ paths:
       - description: Учитывать только избранные льготы (работает только при авторизации)
         in: query
         name: favorites
+        type: boolean
+      - description: Фильтровать льготы по группам пользователя (работает только при
+          авторизации)
+        in: query
+        name: filter_by_user_groups
         type: boolean
       produces:
       - application/json

@@ -63,6 +63,8 @@ func (h *Handler) parseAuthHeader(c *gin.Context) (string, error) {
 		return "", errors.New("token is empty")
 	}
 
+	logger.Info("token parsed", zap.String("token", headerParts[1]))
+
 	return h.tokenManager.Parse(headerParts[1])
 }
 
@@ -71,6 +73,8 @@ func (h *Handler) getUserUUID(c *gin.Context) (uuid.UUID, error) {
 	if !ok {
 		return uuid.Nil, errors.New("user id not found")
 	}
+
+	logger.Info("user id found", zap.String("user_id", id.(string)))
 
 	return uuid.MustParse(id.(string)), nil
 }

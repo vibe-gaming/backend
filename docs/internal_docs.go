@@ -113,6 +113,12 @@ const docTemplateinternal = `{
                         "description": "Показать только избранные льготы (работает только при авторизации, иначе игнорируется)",
                         "name": "favorites",
                         "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Фильтровать льготы по группам пользователя (работает только при авторизации)",
+                        "name": "filter_by_user_groups",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -197,6 +203,12 @@ const docTemplateinternal = `{
                         "type": "boolean",
                         "description": "Учитывать только избранные льготы (работает только при авторизации)",
                         "name": "favorites",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Фильтровать льготы по группам пользователя (работает только при авторизации)",
+                        "name": "filter_by_user_groups",
                         "in": "query"
                     }
                 ],
