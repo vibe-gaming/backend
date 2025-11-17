@@ -28,6 +28,21 @@ func NewGenerator() *Generator {
 	hasFont := false
 	fontName := "dejavu"
 
+	// Выводим текущую рабочую директорию для отладки
+	if wd, err := os.Getwd(); err == nil {
+		fmt.Printf("📂 PDF: Current working directory: %s\n", wd)
+	}
+
+	// Проверяем содержимое /app/fonts
+	if entries, err := os.ReadDir("/app/fonts"); err == nil {
+		fmt.Printf("📂 PDF: Contents of /app/fonts/:\n")
+		for _, entry := range entries {
+			fmt.Printf("  - %s\n", entry.Name())
+		}
+	} else {
+		fmt.Printf("❌ PDF: Cannot read /app/fonts directory: %v\n", err)
+	}
+
 	// Пути для поиска шрифта (production и development)
 	fontPaths := []string{
 		"/app/fonts/DejaVuSans.ttf",      // Production path в Docker контейнере
