@@ -12,6 +12,7 @@ import (
 
 type FavoriteRepository interface {
 	GetByUserIDAndBenefitID(ctx context.Context, userID uuid.UUID, benefitID uuid.UUID) (*domain.Favorite, error)
+	GetByUserCount(ctx context.Context, userID uuid.UUID) (int64, error)
 	Create(ctx context.Context, favorite *domain.Favorite) error
 	Update(ctx context.Context, favorite *domain.Favorite) error
 }
@@ -61,4 +62,16 @@ func (r *favoriteRepository) Update(ctx context.Context, favorite *domain.Favori
 		return fmt.Errorf("db update favorite: %w", err)
 	}
 	return nil
+}
+
+func (r *favoriteRepository) GetByUserCount(ctx context.Context, userID uuid.UUID) (int64, error) {
+	const query = `
+		SELECT COUNT(*) FROM favorite WHERE user_id = uuid_to_bin(?)
+	`
+	var count int64
+	err := r.db.GetContext(ctx, &count, query, userID)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
 }

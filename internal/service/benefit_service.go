@@ -22,6 +22,7 @@ type FilterStats = repository.FilterStats
 type BenefitService struct {
 	benefitRepository  repository.BenefitRepository
 	favoriteRepository repository.FavoriteRepository
+	usersRepository    repository.Users
 	gigachatClient     interface {
 		EnhanceSearchQuery(ctx context.Context, query string) ([]string, error)
 	}
@@ -30,6 +31,7 @@ type BenefitService struct {
 func newBenefitService(
 	benefitRepository repository.BenefitRepository,
 	favoriteRepository repository.FavoriteRepository,
+	userRepository repository.Users,
 	gigachatClient interface {
 		EnhanceSearchQuery(ctx context.Context, query string) ([]string, error)
 	},
@@ -37,6 +39,7 @@ func newBenefitService(
 	return &BenefitService{
 		benefitRepository:  benefitRepository,
 		favoriteRepository: favoriteRepository,
+		usersRepository:    userRepository,
 		gigachatClient:     gigachatClient,
 	}
 }
@@ -236,4 +239,41 @@ func (s *BenefitService) GetFilterStats(ctx context.Context, filters *BenefitFil
 	}
 
 	return s.benefitRepository.GetFilterStats(ctx, filters)
+}
+
+func (s *BenefitService) GetUserBenefitsStats(ctx context.Context, userID uuid.UUID) (*repository.UserBenefitsStats, error) {
+
+	user, err := s.usersRepository.GetOneByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Собираем подтвержденные группы пользователя
+	targetGroups := []string{}
+	for _, group := range user.GroupType {
+		if group.Status == domain.VerificationStatusVerified {
+			targetGroups = append(targetGroups, string(group.Type))
+		}
+	}
+
+	logger.Info("Getting user benefits stats",
+		zap.String("user_id", userID.String()),
+		zap.Strings("target_groups", targetGroups))
+
+	// Считаем доступные льготы для групп пользователя (OR логика)
+	totalBenefits, err := s.benefitRepository.CountAvailableForUser(ctx, targetGroups)
+	if err != nil {
+		return nil, err
+	}
+
+	// Считаем избранные льготы
+	favoritesCount, err := s.favoriteRepository.GetByUserCount(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &repository.UserBenefitsStats{
+		TotalBenefits:  totalBenefits,
+		TotalFavorites: favoritesCount,
+	}, nil
 }

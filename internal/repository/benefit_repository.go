@@ -25,11 +25,17 @@ type BenefitFilters struct {
 	UserID       *string // UUID пользователя для фильтрации избранных (favorites=true)
 }
 
+type UserBenefitsStats struct {
+	TotalBenefits  int64 `json:"total_benefits"`
+	TotalFavorites int64 `json:"total_favorites"`
+}
+
 type BenefitRepository interface {
 	Create(ctx context.Context, benefit *domain.Benefit) error
 	GetByID(ctx context.Context, id string) (*domain.Benefit, error)
 	GetAll(ctx context.Context, limit, offset int, filters *BenefitFilters) ([]*domain.Benefit, error)
 	Count(ctx context.Context, filters *BenefitFilters) (int64, error)
+	CountAvailableForUser(ctx context.Context, targetGroups []string) (int64, error)
 	Update(ctx context.Context, benefit *domain.Benefit) error
 	Delete(ctx context.Context, id string) error
 	GetFilterStats(ctx context.Context, filters *BenefitFilters) (*FilterStats, error)
@@ -586,4 +592,39 @@ func (r *benefitRepository) GetFilterStats(ctx context.Context, filters *Benefit
 	}
 
 	return stats, nil
+}
+
+// CountAvailableForUser подсчитывает количество льгот, доступных для пользователя
+// на основе его групп (используется OR логика - хотя бы одна группа должна совпадать)
+func (r *benefitRepository) CountAvailableForUser(ctx context.Context, targetGroups []string) (int64, error) {
+	if len(targetGroups) == 0 {
+		// Если у пользователя нет групп, возвращаем 0
+		return 0, nil
+	}
+
+	query := `
+		SELECT COUNT(*) 
+		FROM benefit b
+		WHERE b.deleted_at IS NULL`
+
+	args := []interface{}{}
+
+	// Добавляем условие для групп (OR логика - хотя бы одна группа должна совпадать)
+	query += ` AND (`
+	for i, group := range targetGroups {
+		if i > 0 {
+			query += ` OR `
+		}
+		query += `JSON_CONTAINS(b.target_group_ids, ?)`
+		args = append(args, fmt.Sprintf(`"%s"`, group))
+	}
+	query += `)`
+
+	var count int64
+	err := r.db.GetContext(ctx, &count, query, args...)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
 }

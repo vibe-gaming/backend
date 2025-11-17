@@ -45,7 +45,7 @@ func NewServices(deps Deps) *Services {
 			deps.Config.Auth,
 			deps.Config,
 		),
-		Benefits: newBenefitService(deps.Repos.Benefits, deps.Repos.Favorite, deps.GigachatClient),
+		Benefits: newBenefitService(deps.Repos.Benefits, deps.Repos.Favorite, deps.Repos.Users, deps.GigachatClient),
 		Cities:   newCityService(deps.Repos.Cities),
 	}
 }
@@ -69,4 +69,5 @@ type Benefits interface {
 	GetByID(ctx context.Context, id string) (*domain.Benefit, error)
 	MarkAsFavorite(ctx context.Context, userID uuid.UUID, benefitID uuid.UUID) error
 	GetFilterStats(ctx context.Context, filters *repository.BenefitFilters) (*repository.FilterStats, error)
+	GetUserBenefitsStats(ctx context.Context, userID uuid.UUID) (*repository.UserBenefitsStats, error)
 }

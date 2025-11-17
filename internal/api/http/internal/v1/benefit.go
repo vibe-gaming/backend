@@ -21,6 +21,7 @@ func (h *Handler) initBenefits(api *gin.RouterGroup) {
 		benefits.GET("/stats", h.optionalUserIdentityMiddleware, h.getBenefitsFilterStats)
 		benefits.GET("/:id", h.getBenefitByID)
 		benefits.POST("/:id/favorite", h.userIdentityMiddleware, h.markBenefitAsFavorite)
+		benefits.GET("/user-stats", h.userIdentityMiddleware, h.getUserBenefitsStats)
 	}
 }
 
@@ -460,4 +461,33 @@ func (h *Handler) markBenefitAsFavorite(c *gin.Context) {
 	}
 
 	c.Status(http.StatusOK)
+}
+
+// @Summary Get User Benefits Stats
+// @Tags Benefits
+// @Description Получить статистику по льготам пользователя
+// @ModuleID getUserBenefitsStats
+// @Accept  json
+// @Produce  json
+// @Security UserAuth
+// @Success 200 {object} repository.UserBenefitsStats
+// @Failure 500 {object} ErrorStruct
+// @Router /benefits/user-stats [get]
+func (h *Handler) getUserBenefitsStats(c *gin.Context) {
+	userID, err := h.getUserUUID(c)
+	if err != nil {
+		logger.Error("failed to get user id", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get user id"})
+		return
+	}
+
+	stats, err := h.services.Benefits.GetUserBenefitsStats(c.Request.Context(), userID)
+	if err != nil {
+		logger.Error("failed to get user benefits stats", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get user benefits stats"})
+
+		return
+	}
+
+	c.JSON(http.StatusOK, stats)
 }

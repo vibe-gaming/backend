@@ -222,6 +222,40 @@ const docTemplateinternal = `{
                 }
             }
         },
+        "/benefits/user-stats": {
+            "get": {
+                "security": [
+                    {
+                        "UserAuth": []
+                    }
+                ],
+                "description": "Получить статистику по льготам пользователя",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Benefits"
+                ],
+                "summary": "Get User Benefits Stats",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/repository.UserBenefitsStats"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    }
+                }
+            }
+        },
         "/benefits/{id}": {
             "get": {
                 "description": "Получить льготу по ID",
@@ -760,6 +794,17 @@ const docTemplateinternal = `{
                 "verified_at": {
                     "description": "Когда подтверждена",
                     "type": "string"
+                }
+            }
+        },
+        "repository.UserBenefitsStats": {
+            "type": "object",
+            "properties": {
+                "total_benefits": {
+                    "type": "integer"
+                },
+                "total_favorites": {
+                    "type": "integer"
                 }
             }
         },

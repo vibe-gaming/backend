@@ -61,6 +61,13 @@ definitions:
         description: Когда подтверждена
         type: string
     type: object
+  repository.UserBenefitsStats:
+    properties:
+      total_benefits:
+        type: integer
+      total_favorites:
+        type: integer
+    type: object
   v1.benefitResponse:
     properties:
       category:
@@ -414,6 +421,27 @@ paths:
           schema:
             $ref: '#/definitions/ErrorStruct'
       summary: Get Benefits Filter Statistics
+      tags:
+      - Benefits
+  /benefits/user-stats:
+    get:
+      consumes:
+      - application/json
+      description: Получить статистику по льготам пользователя
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/repository.UserBenefitsStats'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+      security:
+      - UserAuth: []
+      summary: Get User Benefits Stats
       tags:
       - Benefits
   /cities:
