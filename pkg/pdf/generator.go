@@ -2,15 +2,18 @@ package pdf
 
 import (
 	"bytes"
+	_ "embed"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/signintech/gopdf"
 	"github.com/vibe-gaming/backend/internal/domain"
 )
+
+//go:embed fonts/DejaVuSans.ttf
+var embeddedFont []byte
 
 type Generator struct {
 	pdf      *gopdf.GoPdf
@@ -26,51 +29,31 @@ func NewGenerator() *Generator {
 		Unit:     gopdf.Unit_PT,
 	})
 
-	// Получаем текущую рабочую директорию
-	wd, _ := os.Getwd()
-
-	// Пробуем добавить TTF шрифт для кириллицы
-	// Используем несколько путей для поиска шрифта
-	fontPaths := []string{
-		filepath.Join(wd, "fonts", "DejaVuSans.ttf"),
-		filepath.Join(wd, "backend", "fonts", "DejaVuSans.ttf"),
-		"./fonts/DejaVuSans.ttf",
-		"./backend/fonts/DejaVuSans.ttf",
-		"fonts/DejaVuSans.ttf",
-		"backend/fonts/DejaVuSans.ttf",
-		"/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-		"/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
-		"/Library/Fonts/Arial Unicode.ttf",
-	}
-
 	hasFont := false
 	fontName := "dejavu"
-	loadedPath := ""
 
-	for _, path := range fontPaths {
-		// Проверяем, существует ли файл
-		if _, err := os.Stat(path); err == nil {
-			err := pdf.AddTTFFont(fontName, path)
-			if err == nil {
-				hasFont = true
-				loadedPath = path
-				break
+	// Загружаем встроенный шрифт
+	if len(embeddedFont) > 0 {
+		// Создаем временный файл для шрифта
+		tmpFile, err := os.CreateTemp("", "dejavu-*.ttf")
+		if err == nil {
+			defer os.Remove(tmpFile.Name())
+
+			if _, err := tmpFile.Write(embeddedFont); err == nil {
+				tmpFile.Close()
+
+				if err := pdf.AddTTFFont(fontName, tmpFile.Name()); err == nil {
+					hasFont = true
+					fmt.Printf("✅ PDF: Font loaded from embedded resource\n")
+				} else {
+					fmt.Printf("⚠️  PDF: Failed to add embedded font: %v\n", err)
+				}
 			}
+		} else {
+			fmt.Printf("⚠️  PDF: Failed to create temp file for font: %v\n", err)
 		}
-	}
-
-	// Логируем результат для отладки
-	if hasFont {
-		fmt.Printf("✅ PDF: Font loaded from %s\n", loadedPath)
 	} else {
-		fmt.Printf("⚠️  PDF: Font not found. Searched in: %v\nCurrent working directory: %s\n", fontPaths, wd)
-	}
-
-	// Если не удалось загрузить TTF, используем встроенный шрифт
-	if !hasFont {
-		// gopdf поддерживает встроенные шрифты, но они не поддерживают кириллицу
-		// В этом случае будем использовать транслитерацию
-		fontName = ""
+		fmt.Printf("⚠️  PDF: Embedded font is empty\n")
 	}
 
 	return &Generator{
@@ -384,7 +367,7 @@ func (g *Generator) GeneratePensionerCertificatePDF(user *domain.User) ([]byte, 
 	g.pdf.SetX(80)
 	g.pdf.Cell(nil, "Дата выдачи:")
 	g.pdf.SetX(200)
-	
+
 	// Ищем подтвержденную группу пенсионеров
 	var issueDate time.Time
 	for _, group := range user.GroupType {
@@ -395,11 +378,11 @@ func (g *Generator) GeneratePensionerCertificatePDF(user *domain.User) ([]byte, 
 			break
 		}
 	}
-	
+
 	if issueDate.IsZero() {
 		issueDate = time.Now()
 	}
-	
+
 	g.pdf.Cell(nil, issueDate.Format("02.01.2006"))
 	currentY += 50
 
@@ -407,7 +390,7 @@ func (g *Generator) GeneratePensionerCertificatePDF(user *domain.User) ([]byte, 
 	g.pdf.SetY(currentY + 50)
 	g.pdf.SetX(50)
 	g.pdf.Line(50, currentY+45, 550, currentY+45)
-	
+
 	g.pdf.SetY(currentY + 60)
 	g.pdf.SetX(80)
 	if err := g.pdf.SetFont(g.fontName, "", 10); err != nil {
