@@ -70,4 +70,5 @@ type Benefits interface {
 	MarkAsFavorite(ctx context.Context, userID uuid.UUID, benefitID uuid.UUID) error
 	GetFilterStats(ctx context.Context, filters *repository.BenefitFilters) (*repository.FilterStats, error)
 	GetUserBenefitsStats(ctx context.Context, userID uuid.UUID) (*repository.UserBenefitsStats, error)
+	GeneratePDF(ctx context.Context, benefit *domain.Benefit) ([]byte, error)
 }

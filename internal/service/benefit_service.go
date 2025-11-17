@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/vibe-gaming/backend/internal/domain"
 	"github.com/vibe-gaming/backend/internal/repository"
 	logger "github.com/vibe-gaming/backend/pkg/logger"
+	"github.com/vibe-gaming/backend/pkg/pdf"
 	"go.uber.org/zap"
 )
 
@@ -276,4 +278,24 @@ func (s *BenefitService) GetUserBenefitsStats(ctx context.Context, userID uuid.U
 		TotalBenefits:  totalBenefits,
 		TotalFavorites: favoritesCount,
 	}, nil
+}
+
+func (s *BenefitService) GeneratePDF(ctx context.Context, benefit *domain.Benefit) ([]byte, error) {
+	logger.Info("Generating PDF for benefit", zap.String("benefit_id", benefit.ID.String()))
+
+	// Создаем генератор PDF
+	generator := pdf.NewGenerator()
+
+	// Генерируем PDF
+	pdfBytes, err := generator.GenerateBenefitPDF(benefit)
+	if err != nil {
+		logger.Error("Failed to generate PDF", zap.Error(err), zap.String("benefit_id", benefit.ID.String()))
+		return nil, fmt.Errorf("failed to generate PDF: %w", err)
+	}
+
+	logger.Info("PDF generated successfully",
+		zap.String("benefit_id", benefit.ID.String()),
+		zap.Int("size_bytes", len(pdfBytes)))
+
+	return pdfBytes, nil
 }

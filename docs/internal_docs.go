@@ -370,6 +370,56 @@ const docTemplateinternal = `{
                 }
             }
         },
+        "/benefits/{id}/pdfdownload": {
+            "get": {
+                "description": "Скачать льготу в формате PDF",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/pdf"
+                ],
+                "tags": [
+                    "Benefits"
+                ],
+                "summary": "Get Benefit PDF Download",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Benefit ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    }
+                }
+            }
+        },
         "/cities": {
             "get": {
                 "description": "Get all cities",

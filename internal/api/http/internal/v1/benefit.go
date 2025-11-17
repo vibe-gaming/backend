@@ -2,6 +2,7 @@ package v1
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -22,6 +23,7 @@ func (h *Handler) initBenefits(api *gin.RouterGroup) {
 		benefits.GET("/:id", h.getBenefitByID)
 		benefits.POST("/:id/favorite", h.userIdentityMiddleware, h.markBenefitAsFavorite)
 		benefits.GET("/user-stats", h.userIdentityMiddleware, h.getUserBenefitsStats)
+		benefits.GET("/:id/pdfdownload", h.getBenefitPDFDownload)
 	}
 }
 
@@ -584,4 +586,57 @@ func (h *Handler) getUserBenefitsStats(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, stats)
+}
+
+// @Summary Get Benefit PDF Download
+// @Tags Benefits
+// @Description Скачать льготу в формате PDF
+// @ModuleID getBenefitPDFDownload
+// @Accept  json
+// @Produce  application/pdf
+// @Param id path string true "Benefit ID (UUID)"
+// @Success 200 {file} application/pdf
+// @Failure 400 {object} ErrorStruct
+// @Failure 404 {object} ErrorStruct
+// @Failure 500 {object} ErrorStruct
+// @Router /benefits/{id}/pdfdownload [get]
+func (h *Handler) getBenefitPDFDownload(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		logger.Error("benefit id is empty")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "benefit id is required"})
+		return
+	}
+
+	// Получаем льготу
+	benefit, err := h.services.Benefits.GetByID(c.Request.Context(), id)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			logger.Error("benefit not found for PDF", zap.String("id", id))
+			c.JSON(http.StatusNotFound, gin.H{"error": "benefit not found"})
+			return
+		}
+		logger.Error("failed to get benefit for PDF", zap.Error(err), zap.String("id", id))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get benefit"})
+		return
+	}
+
+	// Генерируем PDF
+	pdfBytes, err := h.services.Benefits.GeneratePDF(c.Request.Context(), benefit)
+	if err != nil {
+		logger.Error("failed to generate pdf", zap.Error(err), zap.String("id", id))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate pdf"})
+		return
+	}
+
+	// Формируем имя файла
+	filename := fmt.Sprintf("benefit_%s.pdf", benefit.ID.String())
+
+	// Устанавливаем заголовки для скачивания файла
+	c.Header("Content-Type", "application/pdf")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+	c.Header("Content-Length", fmt.Sprintf("%d", len(pdfBytes)))
+
+	// Отправляем PDF
+	c.Data(http.StatusOK, "application/pdf", pdfBytes)
 }
