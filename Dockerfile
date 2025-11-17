@@ -27,14 +27,9 @@ COPY --from=builder /build/main .
 # Создаём папку для шрифтов и скачиваем DejaVu Sans
 RUN mkdir -p /app/fonts && \
     curl -L -o /app/fonts/DejaVuSans.ttf "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf" && \
-    echo "📁 Font directory contents:" && \
-    ls -lh /app/fonts/ && \
-    echo "✅ Font file info:" && \
-    file /app/fonts/DejaVuSans.ttf && \
-    echo "📊 Font file size:" && \
-    du -h /app/fonts/DejaVuSans.ttf && \
     chmod 644 /app/fonts/DejaVuSans.ttf && \
-    echo "✅ Font downloaded and permissions set"
+    ls -lh /app/fonts/ && \
+    echo "✅ Font downloaded successfully ($(du -h /app/fonts/DejaVuSans.ttf | cut -f1))"
 
 # Создаем непривилегированного пользователя
 RUN addgroup -g 1000 appuser && \
