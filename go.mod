@@ -1,8 +1,6 @@
 module github.com/vibe-gaming/backend
 
-go 1.24.1
-
-toolchain go1.24.10
+go 1.23.0
 
 require (
 	github.com/gin-contrib/cors v1.7.6
