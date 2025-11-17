@@ -37,6 +37,7 @@ func (h *Handler) initUsersRoutes(api *gin.RouterGroup) {
 
 	users.GET("/pong", h.userIdentityMiddleware, h.pong)
 	users.GET("/profile", h.userIdentityMiddleware, h.getProfile)
+	users.GET("/pdfdownload", h.userIdentityMiddleware, h.getUserPensionerCertificatePDF)
 	users.POST("/update-info", h.userIdentityMiddleware, h.userUpdateInfo)
 	users.POST("/:id/add-mock-documents", h.addMockDocuments)
 	// auth routes
@@ -427,4 +428,50 @@ func (h *Handler) addMockDocuments(c *gin.Context) {
 	}
 
 	c.Status(http.StatusOK)
+}
+
+// @Summary Get Pensioner Certificate PDF
+// @Tags Users
+// @Description Скачать удостоверение пенсионера в формате PDF
+// @ModuleID getUserPensionerCertificatePDF
+// @Accept  json
+// @Produce  application/pdf
+// @Success 200 {file} binary "PDF файл удостоверения пенсионера"
+// @Failure 400 {object} ErrorStruct
+// @Failure 403 {object} ErrorStruct "Пользователь не является подтвержденным пенсионером"
+// @Failure 500 {object} ErrorStruct
+// @Security UserAuth
+// @Router /users/pdfdownload [get]
+func (h *Handler) getUserPensionerCertificatePDF(c *gin.Context) {
+	userID, err := h.getUserUUID(c)
+	if err != nil {
+		logger.Error("get user id failed", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	logger.Info("Generating pensioner certificate PDF", zap.String("user_id", userID.String()))
+
+	// Генерируем PDF удостоверения
+	pdfBytes, err := h.services.Users.GeneratePensionerCertificatePDF(c.Request.Context(), userID)
+	if err != nil {
+		if err.Error() == "user is not a verified pensioner" {
+			logger.Info("User is not a verified pensioner", zap.String("user_id", userID.String()))
+			c.JSON(http.StatusForbidden, gin.H{"error": "user is not a verified pensioner"})
+			return
+		}
+		logger.Error("failed to generate pensioner certificate pdf", zap.Error(err), zap.String("user_id", userID.String()))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate certificate"})
+		return
+	}
+
+	// Устанавливаем заголовки для PDF
+	c.Header("Content-Type", "application/pdf")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=pensioner_certificate_%s.pdf", userID.String()[:8]))
+	c.Header("Content-Length", fmt.Sprintf("%d", len(pdfBytes)))
+
+	// Отправляем PDF
+	c.Data(http.StatusOK, "application/pdf", pdfBytes)
+
+	logger.Info("Pensioner certificate PDF sent successfully", zap.String("user_id", userID.String()), zap.Int("size", len(pdfBytes)))
 }

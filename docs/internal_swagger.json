@@ -607,6 +607,52 @@
                 }
             }
         },
+        "/users/pdfdownload": {
+            "get": {
+                "security": [
+                    {
+                        "UserAuth": []
+                    }
+                ],
+                "description": "Скачать удостоверение пенсионера в формате PDF",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/pdf"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Get Pensioner Certificate PDF",
+                "responses": {
+                    "200": {
+                        "description": "PDF файл удостоверения пенсионера",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    },
+                    "403": {
+                        "description": "Пользователь не является подтвержденным пенсионером",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    }
+                }
+            }
+        },
         "/users/pong": {
             "get": {
                 "security": [

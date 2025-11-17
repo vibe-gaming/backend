@@ -17,6 +17,7 @@ import (
 	"github.com/vibe-gaming/backend/pkg/hash"
 	"github.com/vibe-gaming/backend/pkg/logger"
 	"github.com/vibe-gaming/backend/pkg/otp"
+	"github.com/vibe-gaming/backend/pkg/pdf"
 	"go.uber.org/zap"
 
 	"github.com/google/uuid"
@@ -269,4 +270,27 @@ func (s *userService) CreateDocument(ctx context.Context, document *domain.UserD
 
 func (s *userService) GetDocumentsByUserID(ctx context.Context, userID uuid.UUID) ([]domain.UserDocument, error) {
 	return s.userDocumentRepository.GetByUserID(ctx, userID)
+}
+
+func (s *userService) GeneratePensionerCertificatePDF(ctx context.Context, userID uuid.UUID) ([]byte, error) {
+	logger.Info("Generating pensioner certificate PDF", zap.String("user_id", userID.String()))
+
+	// Получаем пользователя из репозитория
+	user, err := s.GetOneByID(ctx, userID)
+	if err != nil {
+		logger.Error("Failed to get user for certificate", zap.Error(err), zap.String("user_id", userID.String()))
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	// Генерируем PDF
+	generator := pdf.NewGenerator()
+	pdfBytes, err := generator.GeneratePensionerCertificatePDF(user)
+	if err != nil {
+		logger.Error("Failed to generate certificate PDF", zap.Error(err), zap.String("user_id", userID.String()))
+		return nil, fmt.Errorf("failed to generate PDF: %w", err)
+	}
+
+	logger.Info("Pensioner certificate PDF generated successfully", zap.String("user_id", userID.String()), zap.Int("size", len(pdfBytes)))
+
+	return pdfBytes, nil
 }

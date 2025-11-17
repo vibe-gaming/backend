@@ -58,6 +58,7 @@ type Users interface {
 	UpdateUserGroups(ctx context.Context, userID uuid.UUID, groups domain.UserGroupList) error
 	CreateDocument(ctx context.Context, document *domain.UserDocument) error
 	GetDocumentsByUserID(ctx context.Context, userID uuid.UUID) ([]domain.UserDocument, error)
+	GeneratePensionerCertificatePDF(ctx context.Context, userID uuid.UUID) ([]byte, error)
 }
 
 type Cities interface {

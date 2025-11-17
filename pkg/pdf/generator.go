@@ -295,3 +295,131 @@ func (g *Generator) getCategoryText(cat domain.Category) string {
 		return string(cat)
 	}
 }
+
+// GeneratePensionerCertificatePDF генерирует PDF-документ удостоверения пенсионера
+func (g *Generator) GeneratePensionerCertificatePDF(user *domain.User) ([]byte, error) {
+	// Проверяем, загружен ли шрифт
+	if !g.hasFont {
+		return nil, fmt.Errorf("TTF font not loaded. Please ensure DejaVuSans.ttf is in ./fonts/ directory")
+	}
+
+	// Добавляем страницу
+	g.pdf.AddPage()
+
+	// Устанавливаем шрифт
+	if err := g.pdf.SetFont(g.fontName, "", 14); err != nil {
+		return nil, fmt.Errorf("failed to set font: %w", err)
+	}
+
+	// Заголовок
+	g.pdf.SetX(50)
+	g.pdf.SetY(50)
+	if err := g.pdf.SetFont(g.fontName, "", 20); err != nil {
+		return nil, err
+	}
+	g.pdf.Cell(nil, "УДОСТОВЕРЕНИЕ ПЕНСИОНЕРА")
+
+	// Разделитель
+	g.pdf.SetY(80)
+	g.pdf.SetX(50)
+	g.pdf.Line(50, 75, 550, 75)
+
+	// Информация о пенсионере
+	if err := g.pdf.SetFont(g.fontName, "", 14); err != nil {
+		return nil, err
+	}
+
+	currentY := 100.0
+
+	// Фамилия
+	g.pdf.SetY(currentY)
+	g.pdf.SetX(80)
+	g.pdf.Cell(nil, "Фамилия:")
+	g.pdf.SetX(200)
+	if user.LastName.Valid {
+		g.pdf.Cell(nil, user.LastName.String)
+	}
+	currentY += 30
+
+	// Имя
+	g.pdf.SetY(currentY)
+	g.pdf.SetX(80)
+	g.pdf.Cell(nil, "Имя:")
+	g.pdf.SetX(200)
+	if user.FirstName.Valid {
+		g.pdf.Cell(nil, user.FirstName.String)
+	}
+	currentY += 30
+
+	// Отчество
+	g.pdf.SetY(currentY)
+	g.pdf.SetX(80)
+	g.pdf.Cell(nil, "Отчество:")
+	g.pdf.SetX(200)
+	if user.MiddleName.Valid {
+		g.pdf.Cell(nil, user.MiddleName.String)
+	}
+	currentY += 30
+
+	// СНИЛС
+	g.pdf.SetY(currentY)
+	g.pdf.SetX(80)
+	g.pdf.Cell(nil, "СНИЛС:")
+	g.pdf.SetX(200)
+	if user.SNILS.Valid {
+		g.pdf.Cell(nil, user.SNILS.String)
+	}
+	currentY += 30
+
+	// Номер удостоверения (используем ID пользователя)
+	g.pdf.SetY(currentY)
+	g.pdf.SetX(80)
+	g.pdf.Cell(nil, "Номер удостоверения:")
+	g.pdf.SetX(280)
+	g.pdf.Cell(nil, user.ID.String()[:8])
+	currentY += 50
+
+	// Дата выдачи
+	g.pdf.SetY(currentY)
+	g.pdf.SetX(80)
+	g.pdf.Cell(nil, "Дата выдачи:")
+	g.pdf.SetX(200)
+	
+	// Ищем подтвержденную группу пенсионеров
+	var issueDate time.Time
+	for _, group := range user.GroupType {
+		if group.Type == domain.UserGroupPensioners && group.Status == domain.VerificationStatusVerified {
+			if group.VerifiedAt != nil {
+				issueDate = *group.VerifiedAt
+			}
+			break
+		}
+	}
+	
+	if issueDate.IsZero() {
+		issueDate = time.Now()
+	}
+	
+	g.pdf.Cell(nil, issueDate.Format("02.01.2006"))
+	currentY += 50
+
+	// Футер
+	g.pdf.SetY(currentY + 50)
+	g.pdf.SetX(50)
+	g.pdf.Line(50, currentY+45, 550, currentY+45)
+	
+	g.pdf.SetY(currentY + 60)
+	g.pdf.SetX(80)
+	if err := g.pdf.SetFont(g.fontName, "", 10); err != nil {
+		return nil, err
+	}
+	g.pdf.Cell(nil, "Документ действителен на территории Российской Федерации")
+
+	// Возвращаем PDF в виде байтов
+	var buf bytes.Buffer
+	if _, err := g.pdf.WriteTo(&buf); err != nil {
+		return nil, fmt.Errorf("failed to output PDF: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}

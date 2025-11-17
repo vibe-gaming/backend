@@ -638,6 +638,35 @@ paths:
       summary: Exchange Code for Tokens
       tags:
       - Auth
+  /users/pdfdownload:
+    get:
+      consumes:
+      - application/json
+      description: Скачать удостоверение пенсионера в формате PDF
+      produces:
+      - application/pdf
+      responses:
+        "200":
+          description: PDF файл удостоверения пенсионера
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+        "403":
+          description: Пользователь не является подтвержденным пенсионером
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+      security:
+      - UserAuth: []
+      summary: Get Pensioner Certificate PDF
+      tags:
+      - Users
   /users/pong:
     get:
       consumes:
