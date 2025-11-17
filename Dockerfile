@@ -24,15 +24,18 @@ RUN apk --no-cache add ca-certificates tzdata curl
 # Копируем бинарник из builder stage
 COPY --from=builder /build/main .
 
-# Создаём папку для шрифтов и скачиваем DejaVu Sans
+# Создаём папку для шрифтов и скачиваем DejaVu Sans напрямую из SourceForge
 RUN mkdir -p /app/fonts && \
-    curl -L -o /app/fonts/DejaVuSans.ttf "https://cdn.jsdelivr.net/gh/dejavu-fonts/dejavu-fonts@master/ttf/DejaVuSans.ttf" && \
+    curl -L -o /tmp/dejavu-fonts.tar.bz2 "https://downloads.sourceforge.net/project/dejavu/dejavu/2.37/dejavu-fonts-ttf-2.37.tar.bz2" && \
+    cd /tmp && tar -xjf dejavu-fonts.tar.bz2 && \
+    cp dejavu-fonts-ttf-2.37/ttf/DejaVuSans.ttf /app/fonts/ && \
+    rm -rf /tmp/dejavu-fonts* && \
     chmod 644 /app/fonts/DejaVuSans.ttf && \
     echo "📦 Downloaded font info:" && \
     ls -lh /app/fonts/DejaVuSans.ttf && \
     echo "🔍 First 16 bytes (magic number):" && \
     head -c 16 /app/fonts/DejaVuSans.ttf | od -A n -t x1 && \
-    echo "✅ Font downloaded successfully"
+    echo "✅ Font downloaded and extracted successfully"
 
 # Создаем непривилегированного пользователя
 RUN addgroup -g 1000 appuser && \
