@@ -16,6 +16,7 @@ type Repositories struct {
 	Cities         Cities
 	Favorite       FavoriteRepository
 	UserDocument   UserDocumentRepository
+	Organization   OrganizationRepository
 }
 
 func NewRepositories(db *sqlx.DB) *Repositories {
@@ -26,6 +27,7 @@ func NewRepositories(db *sqlx.DB) *Repositories {
 		Cities:         newCityRepository(db),
 		Favorite:       NewFavoriteRepository(db),
 		UserDocument:   NewUserDocumentRepository(db),
+		Organization:   NewOrganizationRepository(db),
 	}
 }
 

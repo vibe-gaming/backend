@@ -88,6 +88,8 @@ definitions:
         type: number
       longitude:
         type: number
+      organization:
+        $ref: '#/definitions/v1.organizationResponse'
       region:
         items:
           type: integer
@@ -174,6 +176,44 @@ definitions:
       registered_at:
         type: string
       snils:
+        type: string
+    type: object
+  v1.organizationBuildingResponse:
+    properties:
+      address:
+        type: string
+      end_time:
+        type: string
+      gis_deeplink:
+        type: string
+      id:
+        type: string
+      is_open:
+        type: boolean
+      latitude:
+        type: number
+      longitude:
+        type: number
+      phone_number:
+        type: string
+      start_time:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+    type: object
+  v1.organizationResponse:
+    properties:
+      buildings:
+        items:
+          $ref: '#/definitions/v1.organizationBuildingResponse'
+        type: array
+      description:
+        type: string
+      id:
+        type: string
+      name:
         type: string
     type: object
   v1.speechResponse:

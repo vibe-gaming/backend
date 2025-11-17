@@ -182,6 +182,10 @@ type Benefit struct {
 	Tags        BenefitTagList `db:"tags"` // stored as JSON array of tags
 
 	Views int `db:"views"` // количество просмотров
+
+	OrganizationID *uuid.UUID `db:"organization_id"` // nullable
+
+	Organization *Organization
 }
 
 type Favorite struct {
@@ -219,4 +223,11 @@ func (b *Benefit) GetValidTo() string {
 		return ""
 	}
 	return b.ValidTo.Format("2006-01-02")
+}
+
+func (b *Benefit) GetOrganization() *Organization {
+	if b.OrganizationID == nil {
+		return nil
+	}
+	return b.Organization
 }

@@ -28,26 +28,47 @@ func (h *Handler) initBenefits(api *gin.RouterGroup) {
 }
 
 type benefitResponse struct {
-	ID           string   `json:"id"`
-	Title        string   `json:"title"`
-	Description  string   `json:"description"`
-	ValidFrom    string   `json:"valid_from"`
-	ValidTo      string   `json:"valid_to"`
-	CreatedAt    string   `json:"created_at"`
-	UpdatedAt    string   `json:"updated_at"`
-	Type         string   `json:"type"`
-	TargetGroups []string `json:"target_groups"`
-	Longitude    *float64 `json:"longitude,omitempty"`
-	Latitude     *float64 `json:"latitude,omitempty"`
-	CityID       *string  `json:"city_id,omitempty"`
-	Region       []int    `json:"region"`
-	Category     *string  `json:"category,omitempty"`
-	Requirement  string   `json:"requirement"`
-	HowToUse     *string  `json:"how_to_use,omitempty"`
-	SourceURL    string   `json:"source_url"`
-	Tags         []string `json:"tags"`
-	Views        int      `json:"views"`
-	GisDeeplink  string   `json:"gis_deeplink,omitempty"`
+	ID           string                `json:"id"`
+	Title        string                `json:"title"`
+	Description  string                `json:"description"`
+	ValidFrom    string                `json:"valid_from"`
+	ValidTo      string                `json:"valid_to"`
+	CreatedAt    string                `json:"created_at"`
+	UpdatedAt    string                `json:"updated_at"`
+	Type         string                `json:"type"`
+	TargetGroups []string              `json:"target_groups"`
+	Longitude    *float64              `json:"longitude,omitempty"`
+	Latitude     *float64              `json:"latitude,omitempty"`
+	CityID       *string               `json:"city_id,omitempty"`
+	Region       []int                 `json:"region"`
+	Category     *string               `json:"category,omitempty"`
+	Requirement  string                `json:"requirement"`
+	HowToUse     *string               `json:"how_to_use,omitempty"`
+	SourceURL    string                `json:"source_url"`
+	Tags         []string              `json:"tags"`
+	Views        int                   `json:"views"`
+	GisDeeplink  string                `json:"gis_deeplink,omitempty"`
+	Organization *organizationResponse `json:"organization,omitempty"`
+}
+
+type organizationResponse struct {
+	ID          string                         `json:"id"`
+	Name        string                         `json:"name"`
+	Description string                         `json:"description"`
+	Buildings   []organizationBuildingResponse `json:"buildings"`
+}
+
+type organizationBuildingResponse struct {
+	ID          string   `json:"id"`
+	Address     string   `json:"address"`
+	Latitude    float64  `json:"latitude"`
+	Longitude   float64  `json:"longitude"`
+	PhoneNumber string   `json:"phone_number"`
+	GisDeeplink string   `json:"gis_deeplink"`
+	StartTime   string   `json:"start_time"`
+	EndTime     string   `json:"end_time"`
+	IsOpen      bool     `json:"is_open"`
+	Tags        []string `json:"tags"`
 }
 
 type benefitsListResponse struct {
@@ -368,6 +389,38 @@ func (h *Handler) getBenefitByID(c *gin.Context) {
 		tags = append(tags, string(tag))
 	}
 
+	var organization *organizationResponse
+
+	if benefit.Organization != nil {
+		organization = &organizationResponse{
+			ID:          benefit.Organization.ID.String(),
+			Name:        benefit.Organization.Name,
+			Description: benefit.Organization.Description,
+		}
+		for _, building := range benefit.Organization.Buildings {
+			organization.Buildings = append(organization.Buildings, organizationBuildingResponse{
+				ID:        building.ID.String(),
+				Address:   building.Address,
+				Latitude:  building.Latitude,
+				Longitude: building.Longitude,
+			})
+		}
+
+		for _, building := range benefit.Organization.Buildings {
+			organization.Buildings = append(organization.Buildings, organizationBuildingResponse{
+				ID:          building.ID.String(),
+				Address:     building.Address,
+				Latitude:    building.Latitude,
+				Longitude:   building.Longitude,
+				PhoneNumber: building.PhoneNumber,
+				GisDeeplink: building.GetGisDeeplink(),
+				StartTime:   building.StartTime.Format("2006-01-02T15:04:05Z07:00"),
+				EndTime:     building.EndTime.Format("2006-01-02T15:04:05Z07:00"),
+				IsOpen:      building.IsOpen,
+				Tags:        tags,
+			})
+		}
+	}
 	response := benefitResponse{
 		ID:           benefit.ID.String(),
 		Title:        benefit.Title,
@@ -389,6 +442,7 @@ func (h *Handler) getBenefitByID(c *gin.Context) {
 		Tags:         tags,
 		Views:        benefit.Views,
 		GisDeeplink:  benefit.GetGisDeeplink(),
+		Organization: organization,
 	}
 
 	c.JSON(http.StatusOK, response)

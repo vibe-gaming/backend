@@ -22,10 +22,11 @@ type BenefitFilters = repository.BenefitFilters
 type FilterStats = repository.FilterStats
 
 type BenefitService struct {
-	benefitRepository  repository.BenefitRepository
-	favoriteRepository repository.FavoriteRepository
-	usersRepository    repository.Users
-	gigachatClient     interface {
+	benefitRepository      repository.BenefitRepository
+	favoriteRepository     repository.FavoriteRepository
+	usersRepository        repository.Users
+	organizationRepository repository.OrganizationRepository
+	gigachatClient         interface {
 		EnhanceSearchQuery(ctx context.Context, query string) ([]string, error)
 	}
 }
@@ -34,15 +35,17 @@ func newBenefitService(
 	benefitRepository repository.BenefitRepository,
 	favoriteRepository repository.FavoriteRepository,
 	userRepository repository.Users,
+	organizationRepository repository.OrganizationRepository,
 	gigachatClient interface {
 		EnhanceSearchQuery(ctx context.Context, query string) ([]string, error)
 	},
 ) *BenefitService {
 	return &BenefitService{
-		benefitRepository:  benefitRepository,
-		favoriteRepository: favoriteRepository,
-		usersRepository:    userRepository,
-		gigachatClient:     gigachatClient,
+		benefitRepository:      benefitRepository,
+		favoriteRepository:     favoriteRepository,
+		usersRepository:        userRepository,
+		organizationRepository: organizationRepository,
+		gigachatClient:         gigachatClient,
 	}
 }
 
@@ -173,7 +176,21 @@ func buildBooleanQuery(terms []string) string {
 }
 
 func (s *BenefitService) GetByID(ctx context.Context, id string) (*domain.Benefit, error) {
-	return s.benefitRepository.GetByID(ctx, id)
+
+	benefit, err := s.benefitRepository.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if benefit.OrganizationID != nil {
+		organization, err := s.organizationRepository.GetByID(ctx, benefit.OrganizationID.String())
+		if err != nil {
+			return nil, err
+		}
+		benefit.Organization = organization
+	}
+
+	return benefit, nil
 }
 
 func (s *BenefitService) MarkAsFavorite(ctx context.Context, userID uuid.UUID, benefitID uuid.UUID) error {

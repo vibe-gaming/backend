@@ -2,7 +2,6 @@ package pdf
 
 import (
 	"bytes"
-	_ "embed"
 	"fmt"
 	"os"
 	"strings"
@@ -11,9 +10,6 @@ import (
 	"github.com/signintech/gopdf"
 	"github.com/vibe-gaming/backend/internal/domain"
 )
-
-//go:embed fonts/DejaVuSans.ttf
-var embeddedFont []byte
 
 type Generator struct {
 	pdf      *gopdf.GoPdf
@@ -32,37 +28,28 @@ func NewGenerator() *Generator {
 	hasFont := false
 	fontName := "dejavu"
 
-	// Загружаем встроенный шрифт
-	if len(embeddedFont) > 0 {
-		// Создаем временный файл для шрифта
-		tmpFile, err := os.CreateTemp("", "dejavu-*.ttf")
-		if err != nil {
-			fmt.Printf("⚠️  PDF: Failed to create temp file for font: %v\n", err)
-		} else {
-			tmpFileName := tmpFile.Name()
-			defer os.Remove(tmpFileName)
+	// Пути для поиска шрифта (production и development)
+	fontPaths := []string{
+		"/app/fonts/DejaVuSans.ttf",      // Production path в Docker контейнере
+		"./fonts/DejaVuSans.ttf",         // Development path (из корня проекта)
+		"./backend/fonts/DejaVuSans.ttf", // Alternative development path
+	}
 
-			// Записываем шрифт в файл
-			if _, err := tmpFile.Write(embeddedFont); err != nil {
-				fmt.Printf("⚠️  PDF: Failed to write font to temp file: %v\n", err)
-				tmpFile.Close()
-			} else {
-				// ВАЖНО: Закрываем файл перед чтением
-				if err := tmpFile.Close(); err != nil {
-					fmt.Printf("⚠️  PDF: Failed to close temp file: %v\n", err)
-				} else {
-					// Теперь пытаемся загрузить шрифт
-					if err := pdf.AddTTFFont(fontName, tmpFileName); err == nil {
-						hasFont = true
-						fmt.Printf("✅ PDF: Font loaded from embedded resource\n")
-					} else {
-						fmt.Printf("⚠️  PDF: Failed to add embedded font: %v\n", err)
-					}
-				}
+	var loadedPath string
+	for _, path := range fontPaths {
+		if _, err := os.Stat(path); err == nil {
+			if err := pdf.AddTTFFont(fontName, path); err == nil {
+				hasFont = true
+				loadedPath = path
+				break
 			}
 		}
+	}
+
+	if hasFont {
+		fmt.Printf("✅ PDF: Font loaded from %s\n", loadedPath)
 	} else {
-		fmt.Printf("⚠️  PDF: Embedded font is empty\n")
+		fmt.Printf("⚠️  PDF: Font not found in any of the paths: %v\n", fontPaths)
 	}
 
 	return &Generator{

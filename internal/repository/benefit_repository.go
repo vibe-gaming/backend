@@ -7,6 +7,8 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/vibe-gaming/backend/internal/domain"
+	"github.com/vibe-gaming/backend/pkg/logger"
+	"go.uber.org/zap"
 )
 
 type BenefitFilters struct {
@@ -91,7 +93,8 @@ func (r *benefitRepository) GetByID(ctx context.Context, id string) (*domain.Ben
 			how_to_use,
 			source_url,
 			tags,
-			views
+			views,
+			bin_to_uuid(organization_id) as organization_id
 		FROM benefit
 		WHERE id = uuid_to_bin(?) AND deleted_at IS NULL
 	`
@@ -103,6 +106,8 @@ func (r *benefitRepository) GetByID(ctx context.Context, id string) (*domain.Ben
 		}
 		return nil, err
 	}
+
+	logger.Info("benefit organization id", zap.Any("organization_id", benefit.OrganizationID))
 	return &benefit, nil
 }
 

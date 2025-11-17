@@ -938,6 +938,9 @@
                 "longitude": {
                     "type": "number"
                 },
+                "organization": {
+                    "$ref": "#/definitions/v1.organizationResponse"
+                },
                 "region": {
                     "type": "array",
                     "items": {
@@ -1068,6 +1071,64 @@
                     "type": "string"
                 },
                 "snils": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.organizationBuildingResponse": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "end_time": {
+                    "type": "string"
+                },
+                "gis_deeplink": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_open": {
+                    "type": "boolean"
+                },
+                "latitude": {
+                    "type": "number"
+                },
+                "longitude": {
+                    "type": "number"
+                },
+                "phone_number": {
+                    "type": "string"
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "v1.organizationResponse": {
+            "type": "object",
+            "properties": {
+                "buildings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.organizationBuildingResponse"
+                    }
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
                     "type": "string"
                 }
             }
