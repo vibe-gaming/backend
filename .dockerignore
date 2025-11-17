@@ -1,0 +1,27 @@
+# Игнорируем при сборке Docker образа
+.git
+.gitignore
+*.md
+.env
+.env.*
+.data
+bin/
+main
+*.log
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Временные файлы
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Документация
+docs/
+PDF_CYRILLIC_INFO.md
+
