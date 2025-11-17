@@ -36,21 +36,30 @@ func NewGenerator() *Generator {
 	if len(embeddedFont) > 0 {
 		// Создаем временный файл для шрифта
 		tmpFile, err := os.CreateTemp("", "dejavu-*.ttf")
-		if err == nil {
-			defer os.Remove(tmpFile.Name())
+		if err != nil {
+			fmt.Printf("⚠️  PDF: Failed to create temp file for font: %v\n", err)
+		} else {
+			tmpFileName := tmpFile.Name()
+			defer os.Remove(tmpFileName)
 
-			if _, err := tmpFile.Write(embeddedFont); err == nil {
+			// Записываем шрифт в файл
+			if _, err := tmpFile.Write(embeddedFont); err != nil {
+				fmt.Printf("⚠️  PDF: Failed to write font to temp file: %v\n", err)
 				tmpFile.Close()
-
-				if err := pdf.AddTTFFont(fontName, tmpFile.Name()); err == nil {
-					hasFont = true
-					fmt.Printf("✅ PDF: Font loaded from embedded resource\n")
+			} else {
+				// ВАЖНО: Закрываем файл перед чтением
+				if err := tmpFile.Close(); err != nil {
+					fmt.Printf("⚠️  PDF: Failed to close temp file: %v\n", err)
 				} else {
-					fmt.Printf("⚠️  PDF: Failed to add embedded font: %v\n", err)
+					// Теперь пытаемся загрузить шрифт
+					if err := pdf.AddTTFFont(fontName, tmpFileName); err == nil {
+						hasFont = true
+						fmt.Printf("✅ PDF: Font loaded from embedded resource\n")
+					} else {
+						fmt.Printf("⚠️  PDF: Failed to add embedded font: %v\n", err)
+					}
 				}
 			}
-		} else {
-			fmt.Printf("⚠️  PDF: Failed to create temp file for font: %v\n", err)
 		}
 	} else {
 		fmt.Printf("⚠️  PDF: Embedded font is empty\n")
