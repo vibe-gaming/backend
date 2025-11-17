@@ -11,7 +11,7 @@ RUN go mod download
 COPY . .
 
 # Собираем приложение
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/main ./cmd/app/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/app
 
 # Runtime stage
 FROM alpine:latest
@@ -22,7 +22,7 @@ WORKDIR /app
 RUN apk --no-cache add ca-certificates tzdata
 
 # Копируем бинарник из builder stage
-COPY --from=builder /app/main .
+COPY --from=builder /build/main .
 
 # Копируем шрифты для генерации PDF
 COPY fonts /app/fonts
