@@ -18,17 +18,17 @@ FROM alpine:latest
 
 WORKDIR /app
 
-# Устанавливаем CA certificates для HTTPS запросов
-RUN apk --no-cache add ca-certificates tzdata
+# Устанавливаем CA certificates для HTTPS запросов и curl
+RUN apk --no-cache add ca-certificates tzdata curl
 
 # Копируем бинарник из builder stage
 COPY --from=builder /build/main .
 
-# Копируем шрифты для генерации PDF из builder stage
-COPY --from=builder /build/fonts /app/fonts
-
-# Проверяем, что шрифты скопировались (для отладки)
-RUN ls -la /app/fonts/ || echo "Fonts directory not found!"
+# Создаём папку для шрифтов и скачиваем DejaVu Sans
+RUN mkdir -p /app/fonts && \
+    curl -L -o /app/fonts/DejaVuSans.ttf "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf" && \
+    ls -la /app/fonts/ && \
+    echo "✅ Font downloaded successfully"
 
 # Создаем непривилегированного пользователя
 RUN addgroup -g 1000 appuser && \
