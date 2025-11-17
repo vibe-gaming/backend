@@ -322,8 +322,8 @@ func (h *Handler) getBenefitByID(c *gin.Context) {
 		ID:           benefit.ID.String(),
 		Title:        benefit.Title,
 		Description:  benefit.Description,
-		ValidFrom:    benefit.ValidFrom.Format("2006-01-02"),
-		ValidTo:      benefit.ValidTo.Format("2006-01-02"),
+		ValidFrom:    benefit.GetValidFrom(),
+		ValidTo:      benefit.GetValidTo(),
 		CreatedAt:    benefit.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		UpdatedAt:    benefit.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		Type:         string(benefit.Type),
@@ -338,6 +338,7 @@ func (h *Handler) getBenefitByID(c *gin.Context) {
 		SourceURL:    benefit.SourceURL,
 		Tags:         tags,
 		Views:        benefit.Views,
+		GisDeeplink:  benefit.GetGisDeeplink(),
 	}
 
 	c.JSON(http.StatusOK, response)
