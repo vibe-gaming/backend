@@ -24,8 +24,11 @@ RUN apk --no-cache add ca-certificates tzdata
 # Копируем бинарник из builder stage
 COPY --from=builder /build/main .
 
-# Копируем шрифты для генерации PDF
-COPY fonts /app/fonts
+# Копируем шрифты для генерации PDF из builder stage
+COPY --from=builder /build/fonts /app/fonts
+
+# Проверяем, что шрифты скопировались (для отладки)
+RUN ls -la /app/fonts/ || echo "Fonts directory not found!"
 
 # Создаем непривилегированного пользователя
 RUN addgroup -g 1000 appuser && \
