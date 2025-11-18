@@ -72,6 +72,7 @@ type OrganizationBuilding struct {
 	StartTime   time.Time `db:"start_time"`
 	EndTime     time.Time `db:"end_time"`
 	IsOpen      bool      `db:"is_open"`
+	Type        string    `db:"type"`
 
 	Tags OrganizationTagList `db:"tags"`
 }
@@ -81,5 +82,10 @@ func (o *OrganizationBuilding) GetGisDeeplink() string {
 	if o.Longitude == 0 || o.Latitude == 0 {
 		return ""
 	}
-	return fmt.Sprintf("https://2gis.ru/geo/%f,%f/zoom/18", o.Longitude, o.Latitude)
+	return fmt.Sprintf("https://2gis.ru/yakutsk/geo/%v,%v?m=%v,%v/17.38", o.Longitude, o.Latitude, o.Longitude, o.Latitude)
+}
+
+func (o *OrganizationBuilding) IsOpenAlright() bool {
+
+	return true
 }

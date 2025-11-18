@@ -1110,6 +1110,9 @@
                     "items": {
                         "type": "string"
                     }
+                },
+                "type": {
+                    "type": "string"
                 }
             }
         },

@@ -1118,6 +1118,9 @@ const docTemplateinternal = `{
                     "items": {
                         "type": "string"
                     }
+                },
+                "type": {
+                    "type": "string"
                 }
             }
         },

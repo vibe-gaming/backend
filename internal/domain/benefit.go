@@ -206,9 +206,7 @@ func (b *Benefit) GetGisDeeplink() string {
 	if b.Longitude == nil || b.Latitude == nil {
 		return ""
 	}
-	longitude := *b.Longitude
-	latitude := *b.Latitude
-	return fmt.Sprintf("https://2gis.ru/geo/%f,%f/zoom/18", longitude, latitude)
+	return fmt.Sprintf("https://2gis.ru/yakutsk/geo/%v,%v?m=%v,%v/17.38", b.Longitude, b.Latitude, b.Longitude, b.Latitude)
 }
 
 func (b *Benefit) GetValidFrom() string {

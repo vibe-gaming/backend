@@ -69,6 +69,7 @@ type organizationBuildingResponse struct {
 	EndTime     string   `json:"end_time"`
 	IsOpen      bool     `json:"is_open"`
 	Tags        []string `json:"tags"`
+	Type        string   `json:"type"`
 }
 
 type benefitsListResponse struct {
@@ -315,7 +316,14 @@ func (h *Handler) getBenefitsList(c *gin.Context) {
 				Name:        benefit.Organization.Name,
 				Description: benefit.Organization.Description,
 			}
-			for _, building := range benefit.Organization.Buildings {
+			for i := range benefit.Organization.Buildings {
+				building := &benefit.Organization.Buildings[i]
+				logger.Info("building coordinates",
+					zap.String("id", building.ID.String()),
+					zap.Float64("latitude", building.Latitude),
+					zap.Float64("longitude", building.Longitude),
+					zap.String("gis_deeplink", building.GetGisDeeplink()),
+				)
 				organization.Buildings = append(organization.Buildings, organizationBuildingResponse{
 					ID:          building.ID.String(),
 					Address:     building.Address,
@@ -327,6 +335,7 @@ func (h *Handler) getBenefitsList(c *gin.Context) {
 					EndTime:     building.EndTime.Format("2006-01-02T15:04:05Z07:00"),
 					IsOpen:      building.IsOpen,
 					Tags:        tags,
+					Type:        building.Type,
 				})
 			}
 		}
@@ -421,16 +430,20 @@ func (h *Handler) getBenefitByID(c *gin.Context) {
 			Name:        benefit.Organization.Name,
 			Description: benefit.Organization.Description,
 		}
-		for _, building := range benefit.Organization.Buildings {
-			organization.Buildings = append(organization.Buildings, organizationBuildingResponse{
-				ID:        building.ID.String(),
-				Address:   building.Address,
-				Latitude:  building.Latitude,
-				Longitude: building.Longitude,
-			})
-		}
+		for i := range benefit.Organization.Buildings {
+			building := &benefit.Organization.Buildings[i]
+			logger.Info("building coordinates in getBenefitByID",
+				zap.String("id", building.ID.String()),
+				zap.Float64("latitude", building.Latitude),
+				zap.Float64("longitude", building.Longitude),
+				zap.String("gis_deeplink", building.GetGisDeeplink()),
+			)
 
-		for _, building := range benefit.Organization.Buildings {
+			var buildingTags []string
+
+			for _, buildingTag := range building.Tags {
+				buildingTags = append(buildingTags, string(buildingTag))
+			}
 			organization.Buildings = append(organization.Buildings, organizationBuildingResponse{
 				ID:          building.ID.String(),
 				Address:     building.Address,
@@ -441,7 +454,8 @@ func (h *Handler) getBenefitByID(c *gin.Context) {
 				StartTime:   building.StartTime.Format("2006-01-02T15:04:05Z07:00"),
 				EndTime:     building.EndTime.Format("2006-01-02T15:04:05Z07:00"),
 				IsOpen:      building.IsOpen,
-				Tags:        tags,
+				Tags:        buildingTags,
+				Type:        building.Type,
 			})
 		}
 	}

@@ -70,7 +70,8 @@ func (r *organizationRepository) GetByID(ctx context.Context, id string) (*domai
 		start_time, 
 		end_time, 
 		is_open, 
-		tags
+		tags,
+		type
 	FROM organization_building 
 	WHERE organization_id = uuid_to_bin(?) AND deleted_at IS NULL
 	`
