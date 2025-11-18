@@ -136,7 +136,8 @@ func (r *benefitRepository) GetAll(ctx context.Context, limit, offset int, filte
 			b.how_to_use,
 			b.source_url,
 			b.tags,
-			b.views`
+			b.views,
+			b.organization_id`
 
 	// Добавляем поле релевантности, если есть поисковый запрос
 	if hasSearch {
@@ -320,6 +321,20 @@ func (r *benefitRepository) GetAll(ctx context.Context, limit, offset int, filte
 	if err != nil {
 
 		return nil, err
+	}
+
+	organizationRepository := NewOrganizationRepository(r.db)
+	for _, benefit := range benefits {
+
+		if benefit.OrganizationID != nil {
+			organization, err := organizationRepository.GetByID(ctx, benefit.OrganizationID.String())
+			if err != nil {
+				return nil, err
+			}
+
+			benefit.Organization = organization
+		}
+
 	}
 
 	return benefits, nil

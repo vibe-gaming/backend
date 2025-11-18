@@ -308,6 +308,29 @@ func (h *Handler) getBenefitsList(c *gin.Context) {
 			tags = append(tags, string(tag))
 		}
 
+		var organization *organizationResponse
+		if benefit.Organization != nil {
+			organization = &organizationResponse{
+				ID:          benefit.Organization.ID.String(),
+				Name:        benefit.Organization.Name,
+				Description: benefit.Organization.Description,
+			}
+			for _, building := range benefit.Organization.Buildings {
+				organization.Buildings = append(organization.Buildings, organizationBuildingResponse{
+					ID:          building.ID.String(),
+					Address:     building.Address,
+					Latitude:    building.Latitude,
+					Longitude:   building.Longitude,
+					PhoneNumber: building.PhoneNumber,
+					GisDeeplink: building.GetGisDeeplink(),
+					StartTime:   building.StartTime.Format("2006-01-02T15:04:05Z07:00"),
+					EndTime:     building.EndTime.Format("2006-01-02T15:04:05Z07:00"),
+					IsOpen:      building.IsOpen,
+					Tags:        tags,
+				})
+			}
+		}
+
 		response.Benefits = append(response.Benefits, benefitResponse{
 			ID:           benefit.ID.String(),
 			Title:        benefit.Title,
@@ -329,6 +352,7 @@ func (h *Handler) getBenefitsList(c *gin.Context) {
 			Tags:         tags,
 			Views:        benefit.Views,
 			GisDeeplink:  benefit.GetGisDeeplink(),
+			Organization: organization,
 		})
 	}
 
