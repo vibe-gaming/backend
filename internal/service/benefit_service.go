@@ -60,7 +60,17 @@ func (s *BenefitService) GetAll(ctx context.Context, page, limit int, filters *B
 
 	// Подготавливаем поисковый запрос для умного поиска
 	if filters != nil && filters.Search != nil && *filters.Search != "" {
-		logger.Info("Processing search query", zap.String("original_query", *filters.Search))
+		originalQuery := *filters.Search
+		logger.Info("Processing search query", zap.String("original_query", originalQuery))
+
+		// Сначала пытаемся исправить распространенные опечатки
+		correctedQuery := correctCommonTypos(originalQuery)
+		if correctedQuery != originalQuery {
+			logger.Info("Corrected typo in search query",
+				zap.String("original", originalQuery),
+				zap.String("corrected", correctedQuery))
+			filters.Search = &correctedQuery
+		}
 
 		if containsBooleanOperators(*filters.Search) {
 			// Пользователь использует свои операторы - не трогаем запрос
@@ -175,6 +185,85 @@ func buildBooleanQuery(terms []string) string {
 	return strings.Join(processedTerms, " ")
 }
 
+// correctCommonTypos исправляет распространенные опечатки в поисковых запросах
+// Это fallback на случай, если GigaChat недоступен или не распознал опечатку
+func correctCommonTypos(query string) string {
+	// Словарь распространенных опечаток и их исправлений
+	// Ключ - опечатка (в нижнем регистре), значение - правильное написание
+	typoMap := map[string]string{
+		// Аптека
+		"оптека": "аптека",
+		"аптеко": "аптека",
+		"оптеки": "аптека",
+		"аптика": "аптека",
+
+		// Пенсионер
+		"пенсионир": "пенсионер",
+		"пинсионер": "пенсионер",
+		"пенсеонер": "пенсионер",
+
+		// Инвалид
+		"енвалид": "инвалид",
+		"инвольд": "инвалид",
+		"инволид": "инвалид",
+
+		// Студент
+		"стутент": "студент",
+		"студэнт": "студент",
+
+		// Транспорт
+		"тронспорт":  "транспорт",
+		"трансппорт": "транспорт",
+		"трансопрт":  "транспорт",
+
+		// Медицина
+		"медецина": "медицина",
+		"медицына": "медицина",
+		"мидицина": "медицина",
+
+		// Лекарство
+		"ликарство": "лекарство",
+		"лекорство": "лекарство",
+		"лекарстов": "лекарство",
+
+		// Скидка
+		"скитка": "скидка",
+		"сктдка": "скидка",
+		"скдка":  "скидка",
+	}
+
+	// Разбиваем запрос на слова
+	words := strings.Fields(query)
+	correctedWords := make([]string, 0, len(words))
+
+	for _, word := range words {
+		// Проверяем каждое слово на опечатки
+		lowerWord := strings.ToLower(word)
+		if correction, exists := typoMap[lowerWord]; exists {
+			// Сохраняем регистр первой буквы
+			if len(word) > 0 {
+				// Получаем первую руну слова
+				firstRune := []rune(word)[0]
+				// Проверяем, является ли она заглавной
+				if firstRune >= 'А' && firstRune <= 'Я' {
+					// Первая буква заглавная - делаем заглавную в исправлении
+					correctionRunes := []rune(correction)
+					if len(correctionRunes) > 0 {
+						correctionRunes[0] = []rune(strings.ToUpper(string(correctionRunes[0])))[0]
+						correction = string(correctionRunes)
+					}
+				}
+			}
+			correctedWords = append(correctedWords, correction)
+		} else {
+			// Слово не найдено в словаре - оставляем как есть
+			correctedWords = append(correctedWords, word)
+		}
+	}
+
+	return strings.Join(correctedWords, " ")
+}
+
 func (s *BenefitService) GetByID(ctx context.Context, id string) (*domain.Benefit, error) {
 
 	benefit, err := s.benefitRepository.GetByID(ctx, id)
@@ -228,6 +317,17 @@ func (s *BenefitService) MarkAsFavorite(ctx context.Context, userID uuid.UUID, b
 func (s *BenefitService) GetFilterStats(ctx context.Context, filters *BenefitFilters) (*FilterStats, error) {
 	// Подготавливаем поисковый запрос для умного поиска (так же как в GetAll)
 	if filters != nil && filters.Search != nil && *filters.Search != "" {
+		originalQuery := *filters.Search
+
+		// Сначала пытаемся исправить распространенные опечатки
+		correctedQuery := correctCommonTypos(originalQuery)
+		if correctedQuery != originalQuery {
+			logger.Info("Corrected typo in search query for stats",
+				zap.String("original", originalQuery),
+				zap.String("corrected", correctedQuery))
+			filters.Search = &correctedQuery
+		}
+
 		if containsBooleanOperators(*filters.Search) {
 			// Пользователь использует свои операторы - не трогаем запрос
 			filters.SearchMode = "boolean"
