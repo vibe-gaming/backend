@@ -165,6 +165,41 @@ func (s *userService) Auth(ctx context.Context, code string, userAgent string, u
 			},
 		}
 
+		documents := []domain.UserDocument{
+			{
+				ID:             uuid.New(),
+				UserID:         userID,
+				DocumentType:   "passport",
+				DocumentNumber: "9800 123456\n выдан МВД по РС(Я) в г. Якутске, 01.01.2014, 140-002",
+				CreatedAt:      time.Now(),
+				UpdatedAt:      time.Now(),
+			},
+			{
+				ID:             uuid.New(),
+				UserID:         userID,
+				DocumentType:   "snils",
+				DocumentNumber: "1234567890",
+				CreatedAt:      time.Now(),
+				UpdatedAt:      time.Now(),
+			},
+			{
+				ID:             uuid.New(),
+				UserID:         userID,
+				DocumentType:   "registration",
+				DocumentNumber: "Республика Саха (Якутия), Якутск, ул. Петра-Алексеева, д. 100, кв.100",
+				CreatedAt:      time.Now(),
+				UpdatedAt:      time.Now(),
+			},
+		}
+
+		for _, document := range documents {
+			err := s.CreateDocument(ctx, &document)
+			if err != nil {
+				logger.Error("create document failed", zap.Error(err))
+				return nil, fmt.Errorf("create document failed: %w", err)
+			}
+		}
+
 		if err := s.userRepository.Create(ctx, newUser); err != nil {
 			return nil, fmt.Errorf("create user failed: %w", err)
 		}
