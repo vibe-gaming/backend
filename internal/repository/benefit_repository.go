@@ -12,21 +12,22 @@ import (
 )
 
 type BenefitFilters struct {
-	RegionID           *int
-	CityID             *string
-	Types              []string // Типы льгот для фильтрации (federal, regional, commercial) - OR логика
-	TargetGroups       []string
-	Tags               []string
-	Categories         []string
-	DateFrom           *string
-	DateTo             *string
-	Search             *string
-	SearchMode         string   // "natural" или "boolean"
-	SortBy             string   // "created_at", "views", "updated_at"
-	Order              string   // "asc", "desc"
-	UserID             *string  // UUID пользователя для фильтрации избранных (favorites=true)
-	FilterByUserGroups *bool    // Фильтровать по группам пользователя
-	UserGroupTypes     []string // Подтвержденные группы пользователя для фильтрации
+	RegionID            *int
+	CityID              *string
+	Types               []string // Типы льгот для фильтрации (federal, regional, commercial) - OR логика
+	TargetGroups        []string
+	Tags                []string
+	Categories          []string
+	DateFrom            *string
+	DateTo              *string
+	Search              *string
+	SearchMode          string   // "natural" или "boolean"
+	SortBy              string   // "created_at", "views", "updated_at"
+	Order               string   // "asc", "desc"
+	UserID              *string  // UUID пользователя для получения информации об избранном
+	FilterFavoritesOnly *bool    // Фильтровать только избранные (favorites=true)
+	FilterByUserGroups  *bool    // Фильтровать по группам пользователя
+	UserGroupTypes      []string // Подтвержденные группы пользователя для фильтрации
 }
 
 type UserBenefitsStats struct {
@@ -36,7 +37,7 @@ type UserBenefitsStats struct {
 
 type BenefitRepository interface {
 	Create(ctx context.Context, benefit *domain.Benefit) error
-	GetByID(ctx context.Context, id string) (*domain.Benefit, error)
+	GetByID(ctx context.Context, id string, userID *string) (*domain.Benefit, error)
 	GetAll(ctx context.Context, limit, offset int, filters *BenefitFilters) ([]*domain.Benefit, error)
 	Count(ctx context.Context, filters *BenefitFilters) (int64, error)
 	CountAvailableForUser(ctx context.Context, targetGroups []string) (int64, error)
@@ -71,35 +72,60 @@ func (r *benefitRepository) Create(ctx context.Context, benefit *domain.Benefit)
 	}
 	return nil
 }
-func (r *benefitRepository) GetByID(ctx context.Context, id string) (*domain.Benefit, error) {
-	const query = `
+func (r *benefitRepository) GetByID(ctx context.Context, id string, userID *string) (*domain.Benefit, error) {
+	query := `
 		SELECT 
-			bin_to_uuid(id) as id,
-			title,
-			description,
-			valid_from,
-			valid_to,
-			created_at,
-			updated_at,
-			deleted_at,
-			type,
-			target_group_ids,
-			longitude,
-			latitude,
-			bin_to_uuid(city_id) as city_id,
-			region,
-			category,
-			requirment,
-			how_to_use,
-			source_url,
-			tags,
-			views,
-			bin_to_uuid(organization_id) as organization_id
-		FROM benefit
-		WHERE id = uuid_to_bin(?) AND deleted_at IS NULL
-	`
+			bin_to_uuid(b.id) as id,
+			b.title,
+			b.description,
+			b.valid_from,
+			b.valid_to,
+			b.created_at,
+			b.updated_at,
+			b.deleted_at,
+			b.type,
+			b.target_group_ids,
+			b.longitude,
+			b.latitude,
+			bin_to_uuid(b.city_id) as city_id,
+			b.region,
+			b.category,
+			b.requirment,
+			b.how_to_use,
+			b.source_url,
+			b.tags,
+			b.views,
+			bin_to_uuid(b.organization_id) as organization_id`
+
+	args := []interface{}{}
+
+	// Добавляем поле is_favorite через LEFT JOIN с favorite
+	if userID != nil {
+		query += `,
+			CASE WHEN f.id IS NOT NULL THEN 1 ELSE 0 END as is_favorite`
+	} else {
+		query += `,
+			0 as is_favorite`
+	}
+
+	query += `
+		FROM benefit b`
+
+	// LEFT JOIN с таблицей favorite для получения информации об избранном
+	if userID != nil {
+		query += `
+		LEFT JOIN favorite f ON b.id = f.benefit_id 
+			AND f.user_id = UUID_TO_BIN(?)
+			AND f.deleted_at IS NULL`
+		args = append(args, *userID)
+	}
+
+	query += `
+		WHERE b.id = uuid_to_bin(?) AND b.deleted_at IS NULL`
+	args = append(args, id)
+
 	var benefit domain.Benefit
-	err := r.db.GetContext(ctx, &benefit, query, id)
+	err := r.db.GetContext(ctx, &benefit, query, args...)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, domain.ErrNotFound
@@ -139,6 +165,15 @@ func (r *benefitRepository) GetAll(ctx context.Context, limit, offset int, filte
 			b.views,
 			b.organization_id`
 
+	// Добавляем поле is_favorite через LEFT JOIN с favorite
+	if filters != nil && filters.UserID != nil {
+		query += `,
+			CASE WHEN f.id IS NOT NULL THEN 1 ELSE 0 END as is_favorite`
+	} else {
+		query += `,
+			0 as is_favorite`
+	}
+
 	// Добавляем поле релевантности, если есть поисковый запрос
 	if hasSearch {
 		// Добавляем score релевантности - будет использоваться для сортировки
@@ -151,18 +186,22 @@ func (r *benefitRepository) GetAll(ctx context.Context, limit, offset int, filte
 
 	args := []interface{}{}
 
-	// JOIN с таблицей favorite если нужно фильтровать по избранным
+	// LEFT JOIN с таблицей favorite для получения информации об избранном
 	if filters != nil && filters.UserID != nil {
 		query += `
-		INNER JOIN favorite f ON b.id = f.benefit_id 
-			AND f.user_id = UUID_TO_BIN(?) 
+		LEFT JOIN favorite f ON b.id = f.benefit_id 
+			AND f.user_id = UUID_TO_BIN(?)
 			AND f.deleted_at IS NULL`
 		args = append(args, *filters.UserID)
-
 	}
 
 	query += `
 		WHERE b.deleted_at IS NULL`
+
+	// Если нужно фильтровать только избранные
+	if filters != nil && filters.FilterFavoritesOnly != nil && *filters.FilterFavoritesOnly && filters.UserID != nil {
+		query += ` AND f.id IS NOT NULL`
+	}
 
 	// Применяем фильтры
 	if filters != nil {
@@ -354,17 +393,22 @@ func (r *benefitRepository) Count(ctx context.Context, filters *BenefitFilters) 
 
 	args := []interface{}{}
 
-	// JOIN с таблицей favorite если нужно фильтровать по избранным
+	// LEFT JOIN с таблицей favorite для получения информации об избранном
 	if filters != nil && filters.UserID != nil {
 		query += `
-		INNER JOIN favorite f ON b.id = f.benefit_id 
-			AND f.user_id = UUID_TO_BIN(?) 
+		LEFT JOIN favorite f ON b.id = f.benefit_id 
+			AND f.user_id = UUID_TO_BIN(?)
 			AND f.deleted_at IS NULL`
 		args = append(args, *filters.UserID)
 	}
 
 	query += `
 		WHERE b.deleted_at IS NULL`
+
+	// Если нужно фильтровать только избранные
+	if filters != nil && filters.FilterFavoritesOnly != nil && *filters.FilterFavoritesOnly && filters.UserID != nil {
+		query += ` AND f.id IS NOT NULL`
+	}
 
 	// Применяем те же фильтры
 	if filters != nil {
@@ -538,17 +582,22 @@ func (r *benefitRepository) GetFilterStats(ctx context.Context, filters *Benefit
 	baseQuery := `FROM benefit b`
 	baseArgs := []interface{}{}
 
-	// JOIN с таблицей favorite если нужно фильтровать по избранным
+	// LEFT JOIN с таблицей favorite для получения информации об избранном
 	if filters != nil && filters.UserID != nil {
 		baseQuery += `
-		INNER JOIN favorite f ON b.id = f.benefit_id 
-			AND f.user_id = UUID_TO_BIN(?) 
+		LEFT JOIN favorite f ON b.id = f.benefit_id 
+			AND f.user_id = UUID_TO_BIN(?)
 			AND f.deleted_at IS NULL`
 		baseArgs = append(baseArgs, *filters.UserID)
 	}
 
 	baseQuery += `
 		WHERE b.deleted_at IS NULL`
+
+	// Если нужно фильтровать только избранные
+	if filters != nil && filters.FilterFavoritesOnly != nil && *filters.FilterFavoritesOnly && filters.UserID != nil {
+		baseQuery += ` AND f.id IS NOT NULL`
+	}
 
 	// Применяем фильтры (кроме категорий и типов, так как мы их считаем)
 	if filters != nil {

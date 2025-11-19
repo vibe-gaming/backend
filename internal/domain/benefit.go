@@ -186,6 +186,8 @@ type Benefit struct {
 	OrganizationID *uuid.UUID `db:"organization_id"` // nullable
 
 	Organization *Organization
+
+	Favorite bool `db:"is_favorite"` // заполняется через LEFT JOIN с таблицей favorite
 }
 
 type Favorite struct {

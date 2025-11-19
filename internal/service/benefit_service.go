@@ -264,9 +264,14 @@ func correctCommonTypos(query string) string {
 	return strings.Join(correctedWords, " ")
 }
 
-func (s *BenefitService) GetByID(ctx context.Context, id string) (*domain.Benefit, error) {
+func (s *BenefitService) GetByID(ctx context.Context, id string, userID *uuid.UUID) (*domain.Benefit, error) {
+	var userIDStr *string
+	if userID != nil {
+		userIDStrVal := userID.String()
+		userIDStr = &userIDStrVal
+	}
 
-	benefit, err := s.benefitRepository.GetByID(ctx, id)
+	benefit, err := s.benefitRepository.GetByID(ctx, id, userIDStr)
 	if err != nil {
 		return nil, err
 	}
@@ -280,6 +285,18 @@ func (s *BenefitService) GetByID(ctx context.Context, id string) (*domain.Benefi
 	}
 
 	return benefit, nil
+}
+
+func (s *BenefitService) IsFavorite(ctx context.Context, userID uuid.UUID, benefitID uuid.UUID) (bool, error) {
+	favorite, err := s.favoriteRepository.GetByUserIDAndBenefitID(ctx, userID, benefitID)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	// Проверяем, что запись не удалена (soft delete)
+	return favorite.DeletedAt == nil, nil
 }
 
 func (s *BenefitService) MarkAsFavorite(ctx context.Context, userID uuid.UUID, benefitID uuid.UUID) error {

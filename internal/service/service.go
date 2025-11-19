@@ -69,7 +69,8 @@ type Cities interface {
 
 type Benefits interface {
 	GetAll(ctx context.Context, page, limit int, filters *repository.BenefitFilters) ([]*domain.Benefit, int64, error)
-	GetByID(ctx context.Context, id string) (*domain.Benefit, error)
+	GetByID(ctx context.Context, id string, userID *uuid.UUID) (*domain.Benefit, error)
+	IsFavorite(ctx context.Context, userID uuid.UUID, benefitID uuid.UUID) (bool, error)
 	MarkAsFavorite(ctx context.Context, userID uuid.UUID, benefitID uuid.UUID) error
 	GetFilterStats(ctx context.Context, filters *repository.BenefitFilters) (*repository.FilterStats, error)
 	GetUserBenefitsStats(ctx context.Context, userID uuid.UUID) (*repository.UserBenefitsStats, error)
