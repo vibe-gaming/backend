@@ -14,7 +14,7 @@ import (
 type BenefitFilters struct {
 	RegionID           *int
 	CityID             *string
-	Type               *string
+	Types              []string // Типы льгот для фильтрации (federal, regional, commercial) - OR логика
 	TargetGroups       []string
 	Tags               []string
 	Categories         []string
@@ -178,10 +178,17 @@ func (r *benefitRepository) GetAll(ctx context.Context, limit, offset int, filte
 			args = append(args, *filters.CityID)
 		}
 
-		// Фильтр по типу
-		if filters.Type != nil {
-			query += ` AND b.type = ?`
-			args = append(args, *filters.Type)
+		// Фильтр по типам (хотя бы один тип должен совпадать) - OR логика
+		if len(filters.Types) > 0 {
+			query += ` AND (`
+			for i, benefitType := range filters.Types {
+				if i > 0 {
+					query += ` OR `
+				}
+				query += `b.type = ?`
+				args = append(args, benefitType)
+			}
+			query += `)`
 		}
 
 		// Фильтр по целевым группам (хотя бы одна группа должна совпадать)
@@ -373,10 +380,17 @@ func (r *benefitRepository) Count(ctx context.Context, filters *BenefitFilters) 
 			args = append(args, *filters.CityID)
 		}
 
-		// Фильтр по типу
-		if filters.Type != nil {
-			query += ` AND b.type = ?`
-			args = append(args, *filters.Type)
+		// Фильтр по типам (хотя бы один тип должен совпадать) - OR логика
+		if len(filters.Types) > 0 {
+			query += ` AND (`
+			for i, benefitType := range filters.Types {
+				if i > 0 {
+					query += ` OR `
+				}
+				query += `b.type = ?`
+				args = append(args, benefitType)
+			}
+			query += `)`
 		}
 
 		// Фильтр по целевым группам

@@ -100,7 +100,7 @@ type benefitsListResponse struct {
 // @Param limit query int false "Количество элементов на странице (по умолчанию 10, максимум 100)"
 // @Param region query int false "ID региона для фильтрации"
 // @Param city_id query string false "UUID города для фильтрации"
-// @Param type query string false "Тип льготы (federal, regional, commercial)"
+// @Param type query string false "Типы льгот через запятую (federal, regional, commercial) - OR логика"
 // @Param target_groups query string false "Целевые группы через запятую (pensioners, disabled, students и т.д.)"
 // @Param tags query string false "Теги через запятую (most_popular, new, hot, best, recommended, popular, top)"
 // @Param categories query string false "Категории через запятую (medicine, transport, food, clothing, other)"
@@ -145,7 +145,12 @@ func (h *Handler) getBenefitsList(c *gin.Context) {
 	}
 
 	if typeStr := c.Query("type"); typeStr != "" {
-		filters.Type = &typeStr
+		// Разделяем по запятой и убираем пробелы
+		types := strings.Split(typeStr, ",")
+		for i, benefitType := range types {
+			types[i] = strings.TrimSpace(benefitType)
+		}
+		filters.Types = types
 	}
 
 	if targetGroupsStr := c.Query("target_groups"); targetGroupsStr != "" {
@@ -490,13 +495,15 @@ func (h *Handler) getBenefitByID(c *gin.Context) {
 // @Tags Benefits
 // @Description Получить статистику по фильтрам - количество льгот по категориям и уровням
 // @Description
-// @Description Поддерживает те же параметры фильтрации что и GET /benefits (кроме category и type, так как мы их считаем)
+// @Description Поддерживает те же параметры фильтрации что и GET /benefits (кроме category, так как мы его считаем)
+// @Description Типы можно указать для фильтрации статистики по конкретным типам льгот
 // @Description Это позволяет показывать актуальные счетчики в форме фильтров при изменении других параметров
 // @ModuleID getBenefitsFilterStats
 // @Accept  json
 // @Produce  json
 // @Param region query int false "ID региона для фильтрации"
 // @Param city_id query string false "UUID города для фильтрации"
+// @Param type query string false "Типы льгот через запятую (federal, regional, commercial) - OR логика"
 // @Param target_groups query string false "Целевые группы через запятую"
 // @Param tags query string false "Теги через запятую"
 // @Param date_from query string false "Дата начала периода (YYYY-MM-DD)"
@@ -508,7 +515,8 @@ func (h *Handler) getBenefitByID(c *gin.Context) {
 // @Failure 500 {object} ErrorStruct
 // @Router /benefits/stats [get]
 func (h *Handler) getBenefitsFilterStats(c *gin.Context) {
-	// Собираем фильтры (те же что и в getBenefitsList, но без категорий и типов)
+	// Собираем фильтры (те же что и в getBenefitsList, но без категорий и типов для подсчета)
+	// Но если типы указаны, применяем их для более точной статистики
 	filters := &service.BenefitFilters{}
 
 	if regionStr := c.Query("region"); regionStr != "" {
@@ -519,6 +527,15 @@ func (h *Handler) getBenefitsFilterStats(c *gin.Context) {
 
 	if cityID := c.Query("city_id"); cityID != "" {
 		filters.CityID = &cityID
+	}
+
+	// Фильтр по типам (для более точной статистики)
+	if typeStr := c.Query("type"); typeStr != "" {
+		types := strings.Split(typeStr, ",")
+		for i, benefitType := range types {
+			types[i] = strings.TrimSpace(benefitType)
+		}
+		filters.Types = types
 	}
 
 	if targetGroupsStr := c.Query("target_groups"); targetGroupsStr != "" {
