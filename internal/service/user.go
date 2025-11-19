@@ -273,7 +273,13 @@ func (s *userService) GetDocumentsByUserID(ctx context.Context, userID uuid.UUID
 }
 
 func (s *userService) GeneratePensionerCertificatePDF(ctx context.Context, userID uuid.UUID) ([]byte, error) {
-	logger.Info("Generating pensioner certificate PDF", zap.String("user_id", userID.String()))
+	return s.GenerateUserCertificatePDF(ctx, userID, domain.UserGroupPensioners)
+}
+
+func (s *userService) GenerateUserCertificatePDF(ctx context.Context, userID uuid.UUID, groupType domain.GroupType) ([]byte, error) {
+	logger.Info("Generating user certificate PDF",
+		zap.String("user_id", userID.String()),
+		zap.String("group_type", string(groupType)))
 
 	// Получаем пользователя из репозитория
 	user, err := s.GetOneByID(ctx, userID)
@@ -282,15 +288,79 @@ func (s *userService) GeneratePensionerCertificatePDF(ctx context.Context, userI
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
+	// Если у пользователя нет реальных данных для указанной группы, используем моковые
+	user = s.ensureUserHasData(user, groupType)
+
 	// Генерируем PDF
 	generator := pdf.NewGenerator()
-	pdfBytes, err := generator.GeneratePensionerCertificatePDF(user)
+	pdfBytes, err := generator.GenerateUserCertificatePDF(user, groupType)
 	if err != nil {
-		logger.Error("Failed to generate certificate PDF", zap.Error(err), zap.String("user_id", userID.String()))
+		logger.Error("Failed to generate certificate PDF", zap.Error(err),
+			zap.String("user_id", userID.String()),
+			zap.String("group_type", string(groupType)))
 		return nil, fmt.Errorf("failed to generate PDF: %w", err)
 	}
 
-	logger.Info("Pensioner certificate PDF generated successfully", zap.String("user_id", userID.String()), zap.Int("size", len(pdfBytes)))
+	logger.Info("User certificate PDF generated successfully",
+		zap.String("user_id", userID.String()),
+		zap.String("group_type", string(groupType)),
+		zap.Int("size", len(pdfBytes)))
 
 	return pdfBytes, nil
+}
+
+// ensureUserHasData заполняет моковыми данными, если у пользователя нет реальных данных
+func (s *userService) ensureUserHasData(user *domain.User, groupType domain.GroupType) *domain.User {
+	// Создаем копию пользователя
+	userCopy := *user
+
+	// Если нет имени - используем моковое
+	if !userCopy.FirstName.Valid || userCopy.FirstName.String == "" {
+		userCopy.FirstName.Valid = true
+		userCopy.FirstName.String = "Иван"
+	}
+
+	// Если нет фамилии - используем моковое
+	if !userCopy.LastName.Valid || userCopy.LastName.String == "" {
+		userCopy.LastName.Valid = true
+		userCopy.LastName.String = "Иванов"
+	}
+
+	// Если нет отчества - используем моковое
+	if !userCopy.MiddleName.Valid || userCopy.MiddleName.String == "" {
+		userCopy.MiddleName.Valid = true
+		userCopy.MiddleName.String = "Иванович"
+	}
+
+	// Если нет СНИЛС - используем моковый
+	if !userCopy.SNILS.Valid || userCopy.SNILS.String == "" {
+		userCopy.SNILS.Valid = true
+		userCopy.SNILS.String = "123-456-789 00"
+	}
+
+	// Проверяем, есть ли у пользователя подтвержденная группа указанного типа
+	hasVerifiedGroup := false
+	for _, group := range userCopy.GroupType {
+		if group.Type == groupType && group.Status == domain.VerificationStatusVerified {
+			hasVerifiedGroup = true
+			break
+		}
+	}
+
+	// Если нет подтвержденной группы - добавляем моковую
+	if !hasVerifiedGroup {
+		now := time.Now()
+		mockGroup := domain.UserGroup{
+			Type:       groupType,
+			Status:     domain.VerificationStatusVerified,
+			VerifiedAt: &now,
+		}
+		userCopy.GroupType = append(userCopy.GroupType, mockGroup)
+
+		logger.Info("Added mock verified group for certificate",
+			zap.String("user_id", user.ID.String()),
+			zap.String("group_type", string(groupType)))
+	}
+
+	return &userCopy
 }

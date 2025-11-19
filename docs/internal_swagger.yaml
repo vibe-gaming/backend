@@ -275,7 +275,8 @@ paths:
         in: query
         name: city_id
         type: string
-      - description: Тип льготы (federal, regional, commercial)
+      - description: Типы льгот через запятую (federal, regional, commercial) - OR
+          логика
         in: query
         name: type
         type: string
@@ -450,7 +451,8 @@ paths:
       description: |-
         Получить статистику по фильтрам - количество льгот по категориям и уровням
 
-        Поддерживает те же параметры фильтрации что и GET /benefits (кроме category и type, так как мы их считаем)
+        Поддерживает те же параметры фильтрации что и GET /benefits (кроме category, так как мы его считаем)
+        Типы можно указать для фильтрации статистики по конкретным типам льгот
         Это позволяет показывать актуальные счетчики в форме фильтров при изменении других параметров
       parameters:
       - description: ID региона для фильтрации
@@ -460,6 +462,11 @@ paths:
       - description: UUID города для фильтрации
         in: query
         name: city_id
+        type: string
+      - description: Типы льгот через запятую (federal, regional, commercial) - OR
+          логика
+        in: query
+        name: type
         type: string
       - description: Целевые группы через запятую
         in: query
@@ -684,20 +691,34 @@ paths:
     get:
       consumes:
       - application/json
-      description: Скачать удостоверение пенсионера в формате PDF
+      description: |-
+        Скачать удостоверение/справку социальной группы в формате PDF. По умолчанию генерируется удостоверение пенсионера.
+
+        Доступные типы групп:
+        - pensioners (пенсионеры) - по умолчанию
+        - disabled (инвалиды)
+        - students (студенты)
+        - young_families (молодые семьи)
+        - large_families (многодетные семьи)
+        - low_income (малоимущие)
+        - children (дети)
+        - veterans (ветераны)
+
+        Если у пользователя нет реальных данных для указанной группы, будут использованы моковые данные.
+      parameters:
+      - description: 'Тип социальной группы (по умолчанию: pensioners)'
+        in: query
+        name: group_type
+        type: string
       produces:
       - application/pdf
       responses:
         "200":
-          description: PDF файл удостоверения пенсионера
+          description: PDF файл удостоверения/справки
           schema:
             type: file
         "400":
           description: Bad Request
-          schema:
-            $ref: '#/definitions/ErrorStruct'
-        "403":
-          description: Пользователь не является подтвержденным пенсионером
           schema:
             $ref: '#/definitions/ErrorStruct'
         "500":
@@ -706,7 +727,7 @@ paths:
             $ref: '#/definitions/ErrorStruct'
       security:
       - UserAuth: []
-      summary: Get Pensioner Certificate PDF
+      summary: Get User Certificate PDF
       tags:
       - Users
   /users/pong:

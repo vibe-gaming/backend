@@ -430,15 +430,27 @@ func (h *Handler) addMockDocuments(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-// @Summary Get Pensioner Certificate PDF
+// @Summary Get User Certificate PDF
 // @Tags Users
-// @Description Скачать удостоверение пенсионера в формате PDF
+// @Description Скачать удостоверение/справку социальной группы в формате PDF. По умолчанию генерируется удостоверение пенсионера.
+// @Description
+// @Description Доступные типы групп:
+// @Description - pensioners (пенсионеры) - по умолчанию
+// @Description - disabled (инвалиды)
+// @Description - students (студенты)
+// @Description - young_families (молодые семьи)
+// @Description - large_families (многодетные семьи)
+// @Description - low_income (малоимущие)
+// @Description - children (дети)
+// @Description - veterans (ветераны)
+// @Description
+// @Description Если у пользователя нет реальных данных для указанной группы, будут использованы моковые данные.
 // @ModuleID getUserPensionerCertificatePDF
 // @Accept  json
 // @Produce  application/pdf
-// @Success 200 {file} binary "PDF файл удостоверения пенсионера"
+// @Param group_type query string false "Тип социальной группы (по умолчанию: pensioners)"
+// @Success 200 {file} binary "PDF файл удостоверения/справки"
 // @Failure 400 {object} ErrorStruct
-// @Failure 403 {object} ErrorStruct "Пользователь не является подтвержденным пенсионером"
 // @Failure 500 {object} ErrorStruct
 // @Security UserAuth
 // @Router /users/pdfdownload [get]
@@ -450,28 +462,60 @@ func (h *Handler) getUserPensionerCertificatePDF(c *gin.Context) {
 		return
 	}
 
-	logger.Info("Generating pensioner certificate PDF", zap.String("user_id", userID.String()))
+	// Получаем тип группы из параметра запроса (по умолчанию - pensioners)
+	groupTypeStr := c.Query("group_type")
+	if groupTypeStr == "" {
+		groupTypeStr = string(domain.UserGroupPensioners)
+	}
+
+	groupType := domain.GroupType(groupTypeStr)
+
+	// Валидируем тип группы
+	validGroupTypes := map[domain.GroupType]bool{
+		domain.UserGroupPensioners:    true,
+		domain.UserGroupDisabled:      true,
+		domain.UserGroupStudents:      true,
+		domain.UserGroupYoungFamilies: true,
+		domain.UserGroupLargeFamilies: true,
+		domain.UserGroupLowIncome:     true,
+		domain.UserGroupChildren:      true,
+		domain.UserGroupVeterans:      true,
+	}
+
+	if !validGroupTypes[groupType] {
+		logger.Info("Invalid group type provided", zap.String("group_type", groupTypeStr))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid group_type. Valid values: pensioners, disabled, students, young_families, large_families, low_income, children, veterans"})
+		return
+	}
+
+	logger.Info("Generating user certificate PDF",
+		zap.String("user_id", userID.String()),
+		zap.String("group_type", string(groupType)))
 
 	// Генерируем PDF удостоверения
-	pdfBytes, err := h.services.Users.GeneratePensionerCertificatePDF(c.Request.Context(), userID)
+	pdfBytes, err := h.services.Users.GenerateUserCertificatePDF(c.Request.Context(), userID, groupType)
 	if err != nil {
-		if err.Error() == "user is not a verified pensioner" {
-			logger.Info("User is not a verified pensioner", zap.String("user_id", userID.String()))
-			c.JSON(http.StatusForbidden, gin.H{"error": "user is not a verified pensioner"})
-			return
-		}
-		logger.Error("failed to generate pensioner certificate pdf", zap.Error(err), zap.String("user_id", userID.String()))
+		logger.Error("failed to generate user certificate pdf",
+			zap.Error(err),
+			zap.String("user_id", userID.String()),
+			zap.String("group_type", string(groupType)))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate certificate"})
 		return
 	}
 
+	// Формируем имя файла
+	filename := fmt.Sprintf("%s_certificate_%s.pdf", groupType, userID.String()[:8])
+
 	// Устанавливаем заголовки для PDF
 	c.Header("Content-Type", "application/pdf")
-	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=pensioner_certificate_%s.pdf", userID.String()[:8]))
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
 	c.Header("Content-Length", fmt.Sprintf("%d", len(pdfBytes)))
 
 	// Отправляем PDF
 	c.Data(http.StatusOK, "application/pdf", pdfBytes)
 
-	logger.Info("Pensioner certificate PDF sent successfully", zap.String("user_id", userID.String()), zap.Int("size", len(pdfBytes)))
+	logger.Info("User certificate PDF sent successfully",
+		zap.String("user_id", userID.String()),
+		zap.String("group_type", string(groupType)),
+		zap.Int("size", len(pdfBytes)))
 }

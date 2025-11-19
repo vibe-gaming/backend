@@ -56,7 +56,7 @@ const docTemplateinternal = `{
                     },
                     {
                         "type": "string",
-                        "description": "Тип льготы (federal, regional, commercial)",
+                        "description": "Типы льгот через запятую (federal, regional, commercial) - OR логика",
                         "name": "type",
                         "in": "query"
                     },
@@ -145,7 +145,7 @@ const docTemplateinternal = `{
         },
         "/benefits/stats": {
             "get": {
-                "description": "Получить статистику по фильтрам - количество льгот по категориям и уровням\n\nПоддерживает те же параметры фильтрации что и GET /benefits (кроме category и type, так как мы их считаем)\nЭто позволяет показывать актуальные счетчики в форме фильтров при изменении других параметров",
+                "description": "Получить статистику по фильтрам - количество льгот по категориям и уровням\n\nПоддерживает те же параметры фильтрации что и GET /benefits (кроме category, так как мы его считаем)\nТипы можно указать для фильтрации статистики по конкретным типам льгот\nЭто позволяет показывать актуальные счетчики в форме фильтров при изменении других параметров",
                 "consumes": [
                     "application/json"
                 ],
@@ -167,6 +167,12 @@ const docTemplateinternal = `{
                         "type": "string",
                         "description": "UUID города для фильтрации",
                         "name": "city_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Типы льгот через запятую (federal, regional, commercial) - OR логика",
+                        "name": "type",
                         "in": "query"
                     },
                     {
@@ -622,7 +628,7 @@ const docTemplateinternal = `{
                         "UserAuth": []
                     }
                 ],
-                "description": "Скачать удостоверение пенсионера в формате PDF",
+                "description": "Скачать удостоверение/справку социальной группы в формате PDF. По умолчанию генерируется удостоверение пенсионера.\n\nДоступные типы групп:\n- pensioners (пенсионеры) - по умолчанию\n- disabled (инвалиды)\n- students (студенты)\n- young_families (молодые семьи)\n- large_families (многодетные семьи)\n- low_income (малоимущие)\n- children (дети)\n- veterans (ветераны)\n\nЕсли у пользователя нет реальных данных для указанной группы, будут использованы моковые данные.",
                 "consumes": [
                     "application/json"
                 ],
@@ -632,22 +638,24 @@ const docTemplateinternal = `{
                 "tags": [
                     "Users"
                 ],
-                "summary": "Get Pensioner Certificate PDF",
+                "summary": "Get User Certificate PDF",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Тип социальной группы (по умолчанию: pensioners)",
+                        "name": "group_type",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
-                        "description": "PDF файл удостоверения пенсионера",
+                        "description": "PDF файл удостоверения/справки",
                         "schema": {
                             "type": "file"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/ErrorStruct"
-                        }
-                    },
-                    "403": {
-                        "description": "Пользователь не является подтвержденным пенсионером",
                         "schema": {
                             "$ref": "#/definitions/ErrorStruct"
                         }

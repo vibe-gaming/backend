@@ -293,12 +293,15 @@ func (g *Generator) getCategoryText(cat domain.Category) string {
 	}
 }
 
-// GeneratePensionerCertificatePDF генерирует PDF-документ удостоверения пенсионера
-func (g *Generator) GeneratePensionerCertificatePDF(user *domain.User) ([]byte, error) {
+// GenerateUserCertificatePDF генерирует PDF-документ удостоверения для любой социальной группы
+func (g *Generator) GenerateUserCertificatePDF(user *domain.User, groupType domain.GroupType) ([]byte, error) {
 	// Проверяем, загружен ли шрифт
 	if !g.hasFont {
 		return nil, fmt.Errorf("TTF font not loaded. Font should be at /app/fonts/DejaVuSans.ttf (production) or ./fonts/DejaVuSans.ttf (development)")
 	}
+
+	// Получаем заголовок и дополнительную информацию в зависимости от типа группы
+	title, additionalInfo := g.getCertificateTitleAndInfo(groupType)
 
 	// Добавляем страницу
 	g.pdf.AddPage()
@@ -314,7 +317,7 @@ func (g *Generator) GeneratePensionerCertificatePDF(user *domain.User) ([]byte, 
 	if err := g.pdf.SetFont(g.fontName, "", 20); err != nil {
 		return nil, err
 	}
-	g.pdf.Cell(nil, "УДОСТОВЕРЕНИЕ ПЕНСИОНЕРА")
+	g.pdf.Cell(nil, title)
 
 	// Разделитель
 	g.pdf.SetY(80)
@@ -400,12 +403,24 @@ func (g *Generator) GeneratePensionerCertificatePDF(user *domain.User) ([]byte, 
 	g.pdf.Cell(nil, issueDate.Format("02.01.2006"))
 	currentY += 50
 
-	// Футер
-	g.pdf.SetY(currentY + 50)
-	g.pdf.SetX(50)
-	g.pdf.Line(50, currentY+45, 550, currentY+45)
+	// Дополнительная информация (если есть)
+	if additionalInfo != "" {
+		g.pdf.SetY(currentY)
+		g.pdf.SetX(80)
+		if err := g.pdf.SetFont(g.fontName, "", 12); err != nil {
+			return nil, err
+		}
+		rect := &gopdf.Rect{W: 450, H: 15}
+		g.pdf.MultiCell(rect, additionalInfo)
+		currentY = g.pdf.GetY() + 30
+	}
 
-	g.pdf.SetY(currentY + 60)
+	// Футер
+	g.pdf.SetY(currentY + 20)
+	g.pdf.SetX(50)
+	g.pdf.Line(50, currentY+15, 550, currentY+15)
+
+	g.pdf.SetY(currentY + 30)
 	g.pdf.SetX(80)
 	if err := g.pdf.SetFont(g.fontName, "", 10); err != nil {
 		return nil, err
@@ -419,4 +434,42 @@ func (g *Generator) GeneratePensionerCertificatePDF(user *domain.User) ([]byte, 
 	}
 
 	return buf.Bytes(), nil
+}
+
+// getCertificateTitleAndInfo возвращает заголовок и дополнительную информацию для сертификата в зависимости от типа группы
+func (g *Generator) getCertificateTitleAndInfo(groupType domain.GroupType) (string, string) {
+	switch groupType {
+	case domain.UserGroupPensioners:
+		return "УДОСТОВЕРЕНИЕ ПЕНСИОНЕРА",
+			"Предоставляет право на получение льгот и социальных выплат, предусмотренных для пенсионеров."
+	case domain.UserGroupDisabled:
+		return "СПРАВКА ОБ ИНВАЛИДНОСТИ",
+			"Подтверждает статус инвалида и право на получение социальных льгот и мер поддержки."
+	case domain.UserGroupStudents:
+		return "СТУДЕНЧЕСКИЙ БИЛЕТ",
+			"Подтверждает статус студента и право на получение студенческих льгот и скидок."
+	case domain.UserGroupYoungFamilies:
+		return "УДОСТОВЕРЕНИЕ МОЛОДОЙ СЕМЬИ",
+			"Подтверждает статус молодой семьи и право на получение мер социальной поддержки."
+	case domain.UserGroupLargeFamilies:
+		return "УДОСТОВЕРЕНИЕ МНОГОДЕТНОЙ СЕМЬИ",
+			"Подтверждает статус многодетной семьи и право на получение льгот и мер поддержки."
+	case domain.UserGroupLowIncome:
+		return "СПРАВКА О ПРИЗНАНИИ МАЛОИМУЩИМ",
+			"Подтверждает статус малоимущего гражданина и право на получение социальной помощи."
+	case domain.UserGroupChildren:
+		return "СВИДЕТЕЛЬСТВО О РОЖДЕНИИ",
+			"Подтверждает право на получение детских пособий и мер поддержки семей с детьми."
+	case domain.UserGroupVeterans:
+		return "УДОСТОВЕРЕНИЕ ВЕТЕРАНА",
+			"Подтверждает статус ветерана и право на получение льгот и мер социальной поддержки."
+	default:
+		return "УДОСТОВЕРЕНИЕ",
+			"Подтверждает право на получение социальных льгот и мер поддержки."
+	}
+}
+
+// GeneratePensionerCertificatePDF генерирует PDF-документ удостоверения пенсионера (для обратной совместимости)
+func (g *Generator) GeneratePensionerCertificatePDF(user *domain.User) ([]byte, error) {
+	return g.GenerateUserCertificatePDF(user, domain.UserGroupPensioners)
 }
