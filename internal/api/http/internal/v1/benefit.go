@@ -20,7 +20,7 @@ func (h *Handler) initBenefits(api *gin.RouterGroup) {
 	{
 		benefits.GET("", h.optionalUserIdentityMiddleware, h.getBenefitsList)
 		benefits.GET("/stats", h.optionalUserIdentityMiddleware, h.getBenefitsFilterStats)
-		benefits.GET("/:id", h.getBenefitByID)
+		benefits.GET("/:id", h.optionalUserIdentityMiddleware, h.getBenefitByID)
 		benefits.POST("/:id/favorite", h.userIdentityMiddleware, h.markBenefitAsFavorite)
 		benefits.GET("/user-stats", h.userIdentityMiddleware, h.getUserBenefitsStats)
 		benefits.GET("/:id/pdfdownload", h.getBenefitPDFDownload)
@@ -49,6 +49,7 @@ type benefitResponse struct {
 	Views        int                   `json:"views"`
 	GisDeeplink  string                `json:"gis_deeplink,omitempty"`
 	Organization *organizationResponse `json:"organization,omitempty"`
+	Favorite     bool                  `json:"favorite"`
 }
 
 type organizationResponse struct {
@@ -115,6 +116,7 @@ type benefitsListResponse struct {
 // @Failure 400 {object} ErrorStruct
 // @Failure 500 {object} ErrorStruct
 // @Router /benefits [get]
+// @Security UserAuth
 func (h *Handler) getBenefitsList(c *gin.Context) {
 	page := 1
 	limit := 10
@@ -193,14 +195,23 @@ func (h *Handler) getBenefitsList(c *gin.Context) {
 	}
 
 	// Фильтр по избранным (только для авторизованных пользователей)
+	filterFavoritesOnly := false
 	if favoritesStr := c.Query("favorites"); favoritesStr == "true" {
 		// Пытаемся получить userID из контекста (если пользователь авторизован)
 		if userID, err := h.getUserUUID(c); err == nil {
 			userIDStr := userID.String()
 			filters.UserID = &userIDStr
+			filterFavoritesOnly = true
+			filters.FilterFavoritesOnly = &filterFavoritesOnly
 			logger.Info("favorites filter applied", zap.String("user_id", userIDStr))
 		} else {
 			logger.Info("favorites filter requested but user not authenticated", zap.Error(err))
+		}
+	} else {
+		// Если не фильтруем только избранные, но пользователь авторизован - передаем userID для получения информации об избранном
+		if userID, err := h.getUserUUID(c); err == nil {
+			userIDStr := userID.String()
+			filters.UserID = &userIDStr
 		}
 	}
 
@@ -367,6 +378,7 @@ func (h *Handler) getBenefitsList(c *gin.Context) {
 			Views:        benefit.Views,
 			GisDeeplink:  benefit.GetGisDeeplink(),
 			Organization: organization,
+			Favorite:     benefit.Favorite,
 		})
 	}
 
@@ -385,6 +397,7 @@ func (h *Handler) getBenefitsList(c *gin.Context) {
 // @Failure 404 {object} ErrorStruct
 // @Failure 500 {object} ErrorStruct
 // @Router /benefits/{id} [get]
+// @Security UserAuth
 func (h *Handler) getBenefitByID(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
@@ -393,7 +406,13 @@ func (h *Handler) getBenefitByID(c *gin.Context) {
 		return
 	}
 
-	benefit, err := h.services.Benefits.GetByID(c.Request.Context(), id)
+	// Получаем userID из контекста (если пользователь авторизован)
+	var userID *uuid.UUID
+	if userUUID, err := h.getUserUUID(c); err == nil {
+		userID = &userUUID
+	}
+
+	benefit, err := h.services.Benefits.GetByID(c.Request.Context(), id, userID)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
 			logger.Error("benefit not found", zap.String("id", id))
@@ -486,6 +505,7 @@ func (h *Handler) getBenefitByID(c *gin.Context) {
 		Views:        benefit.Views,
 		GisDeeplink:  benefit.GetGisDeeplink(),
 		Organization: organization,
+		Favorite:     benefit.Favorite,
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -567,7 +587,16 @@ func (h *Handler) getBenefitsFilterStats(c *gin.Context) {
 	}
 
 	// Фильтр по избранным (только для авторизованных пользователей)
+	filterFavoritesOnly := false
 	if favoritesStr := c.Query("favorites"); favoritesStr == "true" {
+		if userID, err := h.getUserUUID(c); err == nil {
+			userIDStr := userID.String()
+			filters.UserID = &userIDStr
+			filterFavoritesOnly = true
+			filters.FilterFavoritesOnly = &filterFavoritesOnly
+		}
+	} else {
+		// Если не фильтруем только избранные, но пользователь авторизован - передаем userID для получения информации об избранном
 		if userID, err := h.getUserUUID(c); err == nil {
 			userIDStr := userID.String()
 			filters.UserID = &userIDStr
@@ -717,8 +746,8 @@ func (h *Handler) getBenefitPDFDownload(c *gin.Context) {
 		return
 	}
 
-	// Получаем льготу
-	benefit, err := h.services.Benefits.GetByID(c.Request.Context(), id)
+	// Получаем льготу (для PDF не нужна информация об избранном, передаем nil)
+	benefit, err := h.services.Benefits.GetByID(c.Request.Context(), id, nil)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
 			logger.Error("benefit not found for PDF", zap.String("id", id))

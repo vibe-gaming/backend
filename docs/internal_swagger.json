@@ -10,6 +10,11 @@
     "paths": {
         "/benefits": {
             "get": {
+                "security": [
+                    {
+                        "UserAuth": []
+                    }
+                ],
                 "description": "Получить список всех льгот с пагинацией, фильтрацией и умным поиском\n\nПоиск использует Full-Text Search MySQL с автоматическим поиском по частичному совпадению:\n- Поиск \"транс\" найдет \"транспорт\", \"транспортный\" и т.д.\n- Поиск \"пенсион\" найдет \"пенсионер\", \"пенсионный\" и т.д.\n- Каждое слово ищется с начала (prefix matching)\n\nМожно использовать Boolean операторы для сложных запросов:\n+ обязательное слово: \"+пенсионер +транспорт\"\n- исключить слово: \"льгота -студент\"\n* явный wildcard: \"транс*\"\n\"\" точная фраза: \"общественный транспорт\"",
                 "consumes": [
                     "application/json"
@@ -268,6 +273,11 @@
         },
         "/benefits/{id}": {
             "get": {
+                "security": [
+                    {
+                        "UserAuth": []
+                    }
+                ],
                 "description": "Получить льготу по ID",
                 "consumes": [
                     "application/json"
@@ -817,10 +827,10 @@
         "ErrorStruct": {
             "type": "object",
             "properties": {
-                "ErrorCode": {
+                "error_code": {
                     "type": "integer"
                 },
-                "ErrorMessage": {
+                "error_message": {
                     "type": "string"
                 }
             }
@@ -848,6 +858,29 @@
                 }
             }
         },
+        "domain.GroupType": {
+            "type": "string",
+            "enum": [
+                "pensioners",
+                "disabled",
+                "young_families",
+                "low_income",
+                "students",
+                "large_families",
+                "children",
+                "veterans"
+            ],
+            "x-enum-varnames": [
+                "UserGroupPensioners",
+                "UserGroupDisabled",
+                "UserGroupYoungFamilies",
+                "UserGroupLowIncome",
+                "UserGroupStudents",
+                "UserGroupLargeFamilies",
+                "UserGroupChildren",
+                "UserGroupVeterans"
+            ]
+        },
         "domain.UserDocument": {
             "type": "object",
             "properties": {
@@ -861,7 +894,7 @@
                     "type": "string"
                 },
                 "document_type": {
-                    "type": "string"
+                    "$ref": "#/definitions/domain.UserDocumentType"
                 },
                 "id": {
                     "type": "string"
@@ -873,6 +906,19 @@
                     "type": "string"
                 }
             }
+        },
+        "domain.UserDocumentType": {
+            "type": "string",
+            "enum": [
+                "passport",
+                "snils",
+                "registration"
+            ],
+            "x-enum-varnames": [
+                "UserDocumentTypePassport",
+                "UserDocumentTypeSNILS",
+                "UserDocumentTypeRegistration"
+            ]
         },
         "domain.UserGroup": {
             "type": "object",
@@ -894,16 +940,37 @@
                     "type": "string"
                 },
                 "status": {
-                    "type": "string"
+                    "$ref": "#/definitions/domain.VerificationStatus"
                 },
                 "type": {
-                    "type": "string"
+                    "$ref": "#/definitions/domain.GroupType"
                 },
                 "verified_at": {
                     "description": "Когда подтверждена",
                     "type": "string"
                 }
             }
+        },
+        "domain.VerificationStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "verified",
+                "rejected",
+                "expired"
+            ],
+            "x-enum-comments": {
+                "VerificationStatusExpired": "Истекла",
+                "VerificationStatusPending": "Ожидает подтверждения",
+                "VerificationStatusRejected": "Отклонена",
+                "VerificationStatusVerified": "Подтверждена"
+            },
+            "x-enum-varnames": [
+                "VerificationStatusPending",
+                "VerificationStatusVerified",
+                "VerificationStatusRejected",
+                "VerificationStatusExpired"
+            ]
         },
         "repository.UserBenefitsStats": {
             "type": "object",
@@ -930,6 +997,9 @@
                 },
                 "description": {
                     "type": "string"
+                },
+                "favorite": {
+                    "type": "boolean"
                 },
                 "gis_deeplink": {
                     "type": "string"
@@ -1165,7 +1235,7 @@
                 "groups": {
                     "type": "array",
                     "items": {
-                        "type": "string"
+                        "$ref": "#/definitions/domain.GroupType"
                     }
                 }
             }
