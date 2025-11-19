@@ -59,7 +59,7 @@ func (h *Handler) Init(cfg *config.Config) *gin.Engine {
 		ginzap.Ginzap(logger.Logger(), time.RFC3339, true),
 		limiter.Limit(cfg.Limiter.RPS, cfg.Limiter.Burst, cfg.Limiter.TTL),
 		// TODO: Get from config
-		corsMiddleware([]string{"http://localhost:3000", "https://localhost:3000", "https://lgoty.netlify.app", "https://frontend-one-lovat-13.vercel.app"}),
+		corsMiddleware([]string{"http://localhost:3000", "https://localhost:3000", "https://lgoty.netlify.app", "https://frontend-one-lovat-13.vercel.app", "https://localhost:3001", "https://frontend-two-steel-94.vercel.app"}),
 	)
 	router.Use(ginzap.RecoveryWithZap(logger.Logger(), true))
 
