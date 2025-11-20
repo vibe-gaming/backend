@@ -18,8 +18,8 @@ FROM alpine:latest
 
 WORKDIR /app
 
-# Устанавливаем CA certificates для HTTPS запросов и curl
-RUN apk --no-cache add ca-certificates tzdata curl
+# Устанавливаем CA certificates для HTTPS запросов, curl и ffmpeg
+RUN apk --no-cache add ca-certificates tzdata curl ffmpeg
 
 # Копируем бинарник из builder stage
 COPY --from=builder /build/main .

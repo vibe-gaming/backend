@@ -2,9 +2,9 @@ basePath: /api/v1
 definitions:
   ErrorStruct:
     properties:
-      ErrorCode:
+      error_code:
         type: integer
-      ErrorMessage:
+      error_message:
         type: string
     type: object
   domain.City:
@@ -22,6 +22,26 @@ definitions:
       updated_at:
         type: string
     type: object
+  domain.GroupType:
+    enum:
+    - pensioners
+    - disabled
+    - young_families
+    - low_income
+    - students
+    - large_families
+    - children
+    - veterans
+    type: string
+    x-enum-varnames:
+    - UserGroupPensioners
+    - UserGroupDisabled
+    - UserGroupYoungFamilies
+    - UserGroupLowIncome
+    - UserGroupStudents
+    - UserGroupLargeFamilies
+    - UserGroupChildren
+    - UserGroupVeterans
   domain.UserDocument:
     properties:
       created_at:
@@ -31,7 +51,7 @@ definitions:
       document_number:
         type: string
       document_type:
-        type: string
+        $ref: '#/definitions/domain.UserDocumentType'
       id:
         type: string
       updated_at:
@@ -39,6 +59,16 @@ definitions:
       user_id:
         type: string
     type: object
+  domain.UserDocumentType:
+    enum:
+    - passport
+    - snils
+    - registration
+    type: string
+    x-enum-varnames:
+    - UserDocumentTypePassport
+    - UserDocumentTypeSNILS
+    - UserDocumentTypeRegistration
   domain.UserGroup:
     properties:
       error_message:
@@ -54,13 +84,30 @@ definitions:
         description: Когда отклонена
         type: string
       status:
-        type: string
+        $ref: '#/definitions/domain.VerificationStatus'
       type:
-        type: string
+        $ref: '#/definitions/domain.GroupType'
       verified_at:
         description: Когда подтверждена
         type: string
     type: object
+  domain.VerificationStatus:
+    enum:
+    - pending
+    - verified
+    - rejected
+    - expired
+    type: string
+    x-enum-comments:
+      VerificationStatusExpired: Истекла
+      VerificationStatusPending: Ожидает подтверждения
+      VerificationStatusRejected: Отклонена
+      VerificationStatusVerified: Подтверждена
+    x-enum-varnames:
+    - VerificationStatusPending
+    - VerificationStatusVerified
+    - VerificationStatusRejected
+    - VerificationStatusExpired
   repository.UserBenefitsStats:
     properties:
       total_benefits:
@@ -231,7 +278,7 @@ definitions:
         type: string
       groups:
         items:
-          type: string
+          $ref: '#/definitions/domain.GroupType'
         type: array
     required:
     - city_id
@@ -336,7 +383,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: PDF файл
+          description: OK
           schema:
             type: file
         "400":
@@ -577,7 +624,7 @@ paths:
       - multipart/form-data
       description: Распознает речь из аудиофайла и возвращает текст
       parameters:
-      - description: Аудиофайл в формате MP3
+      - description: Аудиофайл (MP3 или WebM)
         in: formData
         name: audio
         required: true
