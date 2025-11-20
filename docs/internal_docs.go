@@ -478,6 +478,9 @@ const docTemplateinternal = `{
                 "security": [
                     {
                         "UserAuth": []
+                    },
+                    {
+                        "UserAuth": []
                     }
                 ],
                 "description": "Распознает речь из аудиофайла и возвращает текст",
@@ -491,6 +494,15 @@ const docTemplateinternal = `{
                     "Speech"
                 ],
                 "summary": "Распознавание речи",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "Аудиофайл в формате MP3",
+                        "name": "audio",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Распознанный текст",

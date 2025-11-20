@@ -63,8 +63,6 @@ func (h *Handler) parseAuthHeader(c *gin.Context) (string, error) {
 		return "", errors.New("token is empty")
 	}
 
-	logger.Info("token parsed", zap.String("token", headerParts[1]))
-
 	return h.tokenManager.Parse(headerParts[1])
 }
 

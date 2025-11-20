@@ -28,11 +28,13 @@ type speechResponse struct {
 // @Security UserAuth
 // @Accept multipart/form-data
 // @Produce json
+// @Param audio formData file true "Аудиофайл в формате MP3"
 // @Success 200 {object} speechResponse "Распознанный текст"
 // @Failure 400 {object} map[string]string "Ошибка валидации"
 // @Failure 401 {object} map[string]string "Не авторизован"
 // @Failure 500 {object} map[string]string "Внутренняя ошибка сервера"
 // @Router /speech/recognize [post]
+// @Security UserAuth
 func (h *Handler) parseAudioToText(c *gin.Context) {
 	ctx := c.Request.Context()
 

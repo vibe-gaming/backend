@@ -619,6 +619,12 @@ paths:
       consumes:
       - multipart/form-data
       description: Распознает речь из аудиофайла и возвращает текст
+      parameters:
+      - description: Аудиофайл в формате MP3
+        in: formData
+        name: audio
+        required: true
+        type: file
       produces:
       - application/json
       responses:
@@ -645,6 +651,7 @@ paths:
               type: string
             type: object
       security:
+      - UserAuth: []
       - UserAuth: []
       summary: Распознавание речи
       tags:
