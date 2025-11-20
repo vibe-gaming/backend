@@ -284,6 +284,12 @@ func (s *BenefitService) GetByID(ctx context.Context, id string, userID *uuid.UU
 		benefit.Organization = organization
 	}
 
+	benefit.Views++
+	err = s.benefitRepository.Update(ctx, benefit)
+	if err != nil {
+		return nil, err
+	}
+
 	return benefit, nil
 }
 
