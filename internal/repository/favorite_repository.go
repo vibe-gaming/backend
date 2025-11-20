@@ -66,7 +66,7 @@ func (r *favoriteRepository) Update(ctx context.Context, favorite *domain.Favori
 
 func (r *favoriteRepository) GetByUserCount(ctx context.Context, userID uuid.UUID) (int64, error) {
 	const query = `
-		SELECT COUNT(*) FROM favorite WHERE user_id = uuid_to_bin(?)
+		SELECT COUNT(*) FROM favorite WHERE user_id = uuid_to_bin(?) AND deleted_at == NULL
 	`
 	var count int64
 	err := r.db.GetContext(ctx, &count, query, userID)
