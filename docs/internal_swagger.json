@@ -116,13 +116,19 @@
                         "description": "Фильтровать льготы по группам пользователя (работает только при авторизации)",
                         "name": "filter_by_user_groups",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Формат ответа (json или pdf) - по умолчанию json",
+                        "name": "format",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "PDF файл",
                         "schema": {
-                            "$ref": "#/definitions/v1.benefitsListResponse"
+                            "type": "file"
                         }
                     },
                     "400": {
@@ -839,10 +845,10 @@
         "ErrorStruct": {
             "type": "object",
             "properties": {
-                "error_code": {
+                "ErrorCode": {
                     "type": "integer"
                 },
-                "error_message": {
+                "ErrorMessage": {
                     "type": "string"
                 }
             }
@@ -870,29 +876,6 @@
                 }
             }
         },
-        "domain.GroupType": {
-            "type": "string",
-            "enum": [
-                "pensioners",
-                "disabled",
-                "young_families",
-                "low_income",
-                "students",
-                "large_families",
-                "children",
-                "veterans"
-            ],
-            "x-enum-varnames": [
-                "UserGroupPensioners",
-                "UserGroupDisabled",
-                "UserGroupYoungFamilies",
-                "UserGroupLowIncome",
-                "UserGroupStudents",
-                "UserGroupLargeFamilies",
-                "UserGroupChildren",
-                "UserGroupVeterans"
-            ]
-        },
         "domain.UserDocument": {
             "type": "object",
             "properties": {
@@ -906,7 +889,7 @@
                     "type": "string"
                 },
                 "document_type": {
-                    "$ref": "#/definitions/domain.UserDocumentType"
+                    "type": "string"
                 },
                 "id": {
                     "type": "string"
@@ -918,19 +901,6 @@
                     "type": "string"
                 }
             }
-        },
-        "domain.UserDocumentType": {
-            "type": "string",
-            "enum": [
-                "passport",
-                "snils",
-                "registration"
-            ],
-            "x-enum-varnames": [
-                "UserDocumentTypePassport",
-                "UserDocumentTypeSNILS",
-                "UserDocumentTypeRegistration"
-            ]
         },
         "domain.UserGroup": {
             "type": "object",
@@ -952,37 +922,16 @@
                     "type": "string"
                 },
                 "status": {
-                    "$ref": "#/definitions/domain.VerificationStatus"
+                    "type": "string"
                 },
                 "type": {
-                    "$ref": "#/definitions/domain.GroupType"
+                    "type": "string"
                 },
                 "verified_at": {
                     "description": "Когда подтверждена",
                     "type": "string"
                 }
             }
-        },
-        "domain.VerificationStatus": {
-            "type": "string",
-            "enum": [
-                "pending",
-                "verified",
-                "rejected",
-                "expired"
-            ],
-            "x-enum-comments": {
-                "VerificationStatusExpired": "Истекла",
-                "VerificationStatusPending": "Ожидает подтверждения",
-                "VerificationStatusRejected": "Отклонена",
-                "VerificationStatusVerified": "Подтверждена"
-            },
-            "x-enum-varnames": [
-                "VerificationStatusPending",
-                "VerificationStatusVerified",
-                "VerificationStatusRejected",
-                "VerificationStatusExpired"
-            ]
         },
         "repository.UserBenefitsStats": {
             "type": "object",
@@ -1247,7 +1196,7 @@
                 "groups": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/domain.GroupType"
+                        "type": "string"
                     }
                 }
             }

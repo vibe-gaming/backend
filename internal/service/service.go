@@ -75,4 +75,5 @@ type Benefits interface {
 	GetFilterStats(ctx context.Context, filters *repository.BenefitFilters) (*repository.FilterStats, error)
 	GetUserBenefitsStats(ctx context.Context, userID uuid.UUID) (*repository.UserBenefitsStats, error)
 	GeneratePDF(ctx context.Context, benefit *domain.Benefit) ([]byte, error)
+	GenerateBenefitsListPDF(ctx context.Context, benefits []*domain.Benefit, total int64, page int, limit int) ([]byte, error)
 }

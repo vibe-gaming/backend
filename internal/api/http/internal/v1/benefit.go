@@ -112,7 +112,9 @@ type benefitsListResponse struct {
 // @Param order query string false "Направление сортировки (asc, desc) - по умолчанию desc"
 // @Param favorites query boolean false "Показать только избранные льготы (работает только при авторизации, иначе игнорируется)"
 // @Param filter_by_user_groups query boolean false "Фильтровать льготы по группам пользователя (работает только при авторизации)"
-// @Success 200 {object} benefitsListResponse
+// @Param format query string false "Формат ответа (json или pdf) - по умолчанию json"
+// @Success 200 {object} benefitsListResponse "JSON ответ"
+// @Success 200 {file} application/pdf "PDF файл"
 // @Failure 400 {object} ErrorStruct
 // @Failure 500 {object} ErrorStruct
 // @Router /benefits [get]
@@ -292,6 +294,33 @@ func (h *Handler) getBenefitsList(c *gin.Context) {
 	if err != nil {
 		logger.Error("failed to get benefits list", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get benefits list"})
+		return
+	}
+
+	// Проверяем, запрашивается ли PDF
+	format := c.Query("format")
+	acceptHeader := c.GetHeader("Accept")
+	requestPDF := format == "pdf" || strings.Contains(acceptHeader, "application/pdf")
+
+	if requestPDF {
+		// Генерируем PDF
+		pdfBytes, err := h.services.Benefits.GenerateBenefitsListPDF(c.Request.Context(), benefits, total, page, limit)
+		if err != nil {
+			logger.Error("failed to generate benefits list PDF", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate PDF"})
+			return
+		}
+
+		// Формируем имя файла
+		filename := fmt.Sprintf("benefits_list_page_%d.pdf", page)
+
+		// Устанавливаем заголовки для скачивания файла
+		c.Header("Content-Type", "application/pdf")
+		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+		c.Header("Content-Length", fmt.Sprintf("%d", len(pdfBytes)))
+
+		// Отправляем PDF
+		c.Data(http.StatusOK, "application/pdf", pdfBytes)
 		return
 	}
 

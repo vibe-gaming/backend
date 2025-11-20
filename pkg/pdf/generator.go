@@ -168,6 +168,184 @@ func (g *Generator) GenerateBenefitPDF(benefit *domain.Benefit) ([]byte, error) 
 	return buf.Bytes(), nil
 }
 
+// GenerateBenefitsListPDF генерирует PDF-документ для списка льгот
+func (g *Generator) GenerateBenefitsListPDF(benefits []*domain.Benefit, total int, page int, limit int) ([]byte, error) {
+	// Проверяем, загружен ли шрифт
+	if !g.hasFont {
+		return nil, fmt.Errorf("TTF font not loaded. Font should be at /app/fonts/DejaVuSans.ttf (production) or ./fonts/DejaVuSans.ttf (development)")
+	}
+
+	// Добавляем первую страницу
+	g.pdf.AddPage()
+
+	// Заголовок документа
+	g.addHeaderForList()
+
+	// Информация о списке
+	if g.hasFont {
+		g.pdf.SetFont(g.fontName, "", 14)
+		g.pdf.SetX(50)
+		g.pdf.SetY(100)
+		totalPages := 1
+		if total > 0 {
+			totalPages = (total + limit - 1) / limit
+		}
+		g.pdf.Cell(nil, fmt.Sprintf("Список льгот (всего: %d, страница %d из %d)", total, page, totalPages))
+	}
+
+	currentY := 130.0
+
+	// Если список пустой, выводим сообщение
+	if len(benefits) == 0 {
+		if g.hasFont {
+			g.pdf.SetY(currentY)
+			g.pdf.SetX(50)
+			g.pdf.SetFont(g.fontName, "", 12)
+			g.pdf.Cell(nil, "Льготы не найдены")
+		}
+		g.addFooter()
+		var buf bytes.Buffer
+		_, err := g.pdf.WriteTo(&buf)
+		if err != nil {
+			return nil, fmt.Errorf("failed to output PDF: %w", err)
+		}
+		return buf.Bytes(), nil
+	}
+
+	// Выводим каждую льготу
+	for i, benefit := range benefits {
+		// Проверяем, нужна ли новая страница
+		if currentY > 700 {
+			g.pdf.AddPage()
+			currentY = 50
+		}
+
+		// Номер льготы
+		g.pdf.SetY(currentY)
+		g.pdf.SetX(50)
+		if g.hasFont {
+			g.pdf.SetFont(g.fontName, "", 12)
+			g.pdf.SetTextColor(59, 130, 246)
+			g.pdf.Cell(nil, fmt.Sprintf("Льгота %d", i+1))
+			g.pdf.SetTextColor(0, 0, 0)
+		}
+		currentY += 20
+
+		// Название льготы
+		g.pdf.SetY(currentY)
+		g.pdf.SetX(50)
+		if g.hasFont {
+			g.pdf.SetFont(g.fontName, "", 16)
+			g.pdf.Cell(nil, benefit.Title)
+		}
+		currentY += 25
+
+		// Тип льготы
+		g.pdf.SetY(currentY)
+		g.pdf.SetX(50)
+		if g.hasFont {
+			g.pdf.SetFont(g.fontName, "", 11)
+			levelText := g.getLevelText(benefit.Type)
+			g.pdf.Cell(nil, "Уровень: "+levelText)
+		}
+		currentY += 20
+
+		// Описание (с переносами строк)
+		if benefit.Description != "" {
+			g.pdf.SetY(currentY)
+			g.pdf.SetX(50)
+			if g.hasFont {
+				g.pdf.SetFont(g.fontName, "", 10)
+				g.pdf.SetTextColor(50, 50, 50)
+				rect := &gopdf.Rect{W: 500, H: 12}
+				g.pdf.MultiCell(rect, benefit.Description)
+				currentY = g.pdf.GetY() + 10
+			}
+		}
+
+		// Целевые группы
+		if len(benefit.TargetGroupIDs) > 0 {
+			groups := []string{}
+			for _, tg := range benefit.TargetGroupIDs {
+				groups = append(groups, g.getTargetGroupText(tg))
+			}
+			g.pdf.SetY(currentY)
+			g.pdf.SetX(50)
+			if g.hasFont {
+				g.pdf.SetFont(g.fontName, "", 10)
+				g.pdf.SetTextColor(0, 0, 0)
+				g.pdf.Cell(nil, "Целевые группы: "+strings.Join(groups, ", "))
+			}
+			currentY += 18
+		}
+
+		// Категория
+		if benefit.Category != nil {
+			categoryText := g.getCategoryText(*benefit.Category)
+			g.pdf.SetY(currentY)
+			g.pdf.SetX(50)
+			if g.hasFont {
+				g.pdf.SetFont(g.fontName, "", 10)
+				g.pdf.Cell(nil, "Категория: "+categoryText)
+			}
+			currentY += 18
+		}
+
+		// Период действия
+		validFrom := "Не указано"
+		validTo := "Не указано"
+		if benefit.ValidFrom != nil {
+			validFrom = benefit.ValidFrom.Format("02.01.2006")
+		}
+		if benefit.ValidTo != nil {
+			validTo = benefit.ValidTo.Format("02.01.2006")
+		}
+		g.pdf.SetY(currentY)
+		g.pdf.SetX(50)
+		if g.hasFont {
+			g.pdf.SetFont(g.fontName, "", 10)
+			g.pdf.Cell(nil, fmt.Sprintf("Период действия: С %s по %s", validFrom, validTo))
+		}
+		currentY += 20
+
+		// Разделитель между льготами
+		g.pdf.SetY(currentY)
+		g.pdf.SetX(50)
+		g.pdf.Line(50, currentY, 545, currentY)
+		currentY += 20
+	}
+
+	// Футер
+	g.addFooter()
+
+	// Получаем bytes
+	var buf bytes.Buffer
+	_, err := g.pdf.WriteTo(&buf)
+	if err != nil {
+		return nil, fmt.Errorf("failed to output PDF: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}
+
+// addHeaderForList добавляет заголовок документа для списка
+func (g *Generator) addHeaderForList() {
+	// Синий прямоугольник
+	g.pdf.SetFillColor(59, 130, 246)
+	g.pdf.RectFromUpperLeftWithStyle(0, 0, 595, 70, "F")
+
+	// Текст заголовка
+	if g.hasFont {
+		g.pdf.SetTextColor(255, 255, 255)
+		g.pdf.SetFont(g.fontName, "", 24)
+		g.pdf.SetX(50)
+		g.pdf.SetY(30)
+		g.pdf.Cell(nil, "СПИСОК ЛЬГОТ")
+		// Сбрасываем цвет текста
+		g.pdf.SetTextColor(0, 0, 0)
+	}
+}
+
 // addHeader добавляет заголовок документа
 func (g *Generator) addHeader() {
 	// Синий прямоугольник

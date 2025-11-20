@@ -433,3 +433,30 @@ func (s *BenefitService) GeneratePDF(ctx context.Context, benefit *domain.Benefi
 
 	return pdfBytes, nil
 }
+
+func (s *BenefitService) GenerateBenefitsListPDF(ctx context.Context, benefits []*domain.Benefit, total int64, page int, limit int) ([]byte, error) {
+	logger.Info("Generating PDF for benefits list",
+		zap.Int("benefits_count", len(benefits)),
+		zap.Int64("total", total),
+		zap.Int("page", page),
+		zap.Int("limit", limit))
+
+	// Создаем генератор PDF
+	generator := pdf.NewGenerator()
+
+	// Генерируем PDF
+	pdfBytes, err := generator.GenerateBenefitsListPDF(benefits, int(total), page, limit)
+	if err != nil {
+		logger.Error("Failed to generate benefits list PDF",
+			zap.Error(err),
+			zap.Int("benefits_count", len(benefits)))
+		return nil, fmt.Errorf("failed to generate PDF: %w", err)
+	}
+
+	logger.Info("Benefits list PDF generated successfully",
+		zap.Int("benefits_count", len(benefits)),
+		zap.Int64("total", total),
+		zap.Int("size_bytes", len(pdfBytes)))
+
+	return pdfBytes, nil
+}
