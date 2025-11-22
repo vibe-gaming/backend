@@ -1,10 +1,9 @@
 package v1
 
 import (
-	"io"
 	"net/http"
-	"os"
 
+	"github.com/vibe-gaming/backend/internal/api/http/admin"
 	"github.com/vibe-gaming/backend/pkg/logger"
 	"go.uber.org/zap"
 
@@ -12,28 +11,10 @@ import (
 )
 
 func (h *Handler) initAdminRoutes(api *gin.RouterGroup) {
-	admin := api.Group("/admin")
-	admin.GET("/", h.adminPage)
-	admin.GET("/stats", h.getAdminStats)
-}
-
-func (h *Handler) adminPage(c *gin.Context) {
-	file, err := os.Open("./internal/api/http/admin.html")
-	if err != nil {
-		logger.Error("failed to open admin.html", zap.Error(err))
-		c.String(http.StatusInternalServerError, "Failed to open admin page")
-		return
-	}
-	defer file.Close()
-
-	htmlContent, err := io.ReadAll(file)
-	if err != nil {
-		logger.Error("failed to read admin.html", zap.Error(err))
-		c.String(http.StatusInternalServerError, "Failed to read admin page")
-		return
-	}
-
-	c.Data(http.StatusOK, "text/html; charset=utf-8", htmlContent)
+	adminGroup := api.Group("/admin")
+	adminHandler := admin.NewHandler()
+	adminGroup.GET("/", adminHandler.AdminPage)
+	adminGroup.GET("/stats", h.getAdminStats)
 }
 
 type adminStatsResponse struct {

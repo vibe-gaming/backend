@@ -17,6 +17,7 @@ import (
 	"github.com/vibe-gaming/backend/pkg/validator"
 	"go.uber.org/zap"
 
+	"github.com/vibe-gaming/backend/internal/api/http/admin"
 	internalV1 "github.com/vibe-gaming/backend/internal/api/http/internal/v1"
 	"github.com/vibe-gaming/backend/internal/config"
 	"github.com/vibe-gaming/backend/internal/esia"
@@ -85,15 +86,18 @@ func (h *Handler) Init(cfg *config.Config) *gin.Engine {
 		c.Data(http.StatusOK, "text/html; charset=utf-8", htmlContent)
 	})
 
+	// Инициализируем admin handler
+	adminHandler := admin.NewHandler()
+
 	// Админка на корневом уровне
-	router.GET("/admin/", h.adminPage)
+	router.GET("/admin/", adminHandler.AdminPage)
 	router.GET("/admin/stats", h.getAdminStats)
-	router.GET("/admin/create-benefit", h.createBenefitPage)
-	router.GET("/admin/benefits", h.benefitsListPage)
-	router.GET("/admin/benefits/:id", h.benefitDetailPage)
-	router.GET("/admin/organizations", h.organizationsListPage)
-	router.GET("/admin/organizations/:id", h.organizationDetailPage)
-	router.GET("/admin/create-organization", h.createOrganizationPage)
+	router.GET("/admin/create-benefit", adminHandler.CreateBenefitPage)
+	router.GET("/admin/benefits", adminHandler.BenefitsListPage)
+	router.GET("/admin/benefits/:id", adminHandler.BenefitDetailPage)
+	router.GET("/admin/organizations", adminHandler.OrganizationsListPage)
+	router.GET("/admin/organizations/:id", adminHandler.OrganizationDetailPage)
+	router.GET("/admin/create-organization", adminHandler.CreateOrganizationPage)
 
 	h.initAdminRoutes(router)
 	h.initAPI(router)
@@ -103,142 +107,10 @@ func (h *Handler) Init(cfg *config.Config) *gin.Engine {
 
 func (h *Handler) initAdminRoutes(router *gin.Engine) {
 	api := router.Group("/api")
-	admin := api.Group("/admin")
-	admin.GET("/", h.adminPage)
-	admin.GET("/stats", h.getAdminStats)
-}
-
-func (h *Handler) adminPage(c *gin.Context) {
-	file, err := os.Open("./internal/api/http/admin.html")
-	if err != nil {
-		logger.Error("failed to open admin.html", zap.Error(err))
-		c.String(http.StatusInternalServerError, "Failed to open admin page")
-		return
-	}
-	defer file.Close()
-
-	htmlContent, err := io.ReadAll(file)
-	if err != nil {
-		logger.Error("failed to read admin.html", zap.Error(err))
-		c.String(http.StatusInternalServerError, "Failed to read admin page")
-		return
-	}
-
-	c.Data(http.StatusOK, "text/html; charset=utf-8", htmlContent)
-}
-
-func (h *Handler) createBenefitPage(c *gin.Context) {
-	file, err := os.Open("./internal/api/http/create-benefit.html")
-	if err != nil {
-		logger.Error("failed to open create-benefit.html", zap.Error(err))
-		c.String(http.StatusInternalServerError, "Failed to open create benefit page")
-		return
-	}
-	defer file.Close()
-
-	htmlContent, err := io.ReadAll(file)
-	if err != nil {
-		logger.Error("failed to read create-benefit.html", zap.Error(err))
-		c.String(http.StatusInternalServerError, "Failed to read create benefit page")
-		return
-	}
-
-	c.Data(http.StatusOK, "text/html; charset=utf-8", htmlContent)
-}
-
-func (h *Handler) benefitsListPage(c *gin.Context) {
-	file, err := os.Open("./internal/api/http/benefits-list.html")
-	if err != nil {
-		logger.Error("failed to open benefits-list.html", zap.Error(err))
-		c.String(http.StatusInternalServerError, "Failed to open benefits list page")
-		return
-	}
-	defer file.Close()
-
-	htmlContent, err := io.ReadAll(file)
-	if err != nil {
-		logger.Error("failed to read benefits-list.html", zap.Error(err))
-		c.String(http.StatusInternalServerError, "Failed to read benefits list page")
-		return
-	}
-
-	c.Data(http.StatusOK, "text/html; charset=utf-8", htmlContent)
-}
-
-func (h *Handler) benefitDetailPage(c *gin.Context) {
-	file, err := os.Open("./internal/api/http/benefit-detail.html")
-	if err != nil {
-		logger.Error("failed to open benefit-detail.html", zap.Error(err))
-		c.String(http.StatusInternalServerError, "Failed to open benefit detail page")
-		return
-	}
-	defer file.Close()
-
-	htmlContent, err := io.ReadAll(file)
-	if err != nil {
-		logger.Error("failed to read benefit-detail.html", zap.Error(err))
-		c.String(http.StatusInternalServerError, "Failed to read benefit detail page")
-		return
-	}
-
-	c.Data(http.StatusOK, "text/html; charset=utf-8", htmlContent)
-}
-
-func (h *Handler) organizationsListPage(c *gin.Context) {
-	file, err := os.Open("./internal/api/http/organizations-list.html")
-	if err != nil {
-		logger.Error("failed to open organizations-list.html", zap.Error(err))
-		c.String(http.StatusInternalServerError, "Failed to open organizations list page")
-		return
-	}
-	defer file.Close()
-
-	htmlContent, err := io.ReadAll(file)
-	if err != nil {
-		logger.Error("failed to read organizations-list.html", zap.Error(err))
-		c.String(http.StatusInternalServerError, "Failed to read organizations list page")
-		return
-	}
-
-	c.Data(http.StatusOK, "text/html; charset=utf-8", htmlContent)
-}
-
-func (h *Handler) organizationDetailPage(c *gin.Context) {
-	file, err := os.Open("./internal/api/http/organization-detail.html")
-	if err != nil {
-		logger.Error("failed to open organization-detail.html", zap.Error(err))
-		c.String(http.StatusInternalServerError, "Failed to open organization detail page")
-		return
-	}
-	defer file.Close()
-
-	htmlContent, err := io.ReadAll(file)
-	if err != nil {
-		logger.Error("failed to read organization-detail.html", zap.Error(err))
-		c.String(http.StatusInternalServerError, "Failed to read organization detail page")
-		return
-	}
-
-	c.Data(http.StatusOK, "text/html; charset=utf-8", htmlContent)
-}
-
-func (h *Handler) createOrganizationPage(c *gin.Context) {
-	file, err := os.Open("./internal/api/http/create-organization.html")
-	if err != nil {
-		logger.Error("failed to open create-organization.html", zap.Error(err))
-		c.String(http.StatusInternalServerError, "Failed to open create organization page")
-		return
-	}
-	defer file.Close()
-
-	htmlContent, err := io.ReadAll(file)
-	if err != nil {
-		logger.Error("failed to read create-organization.html", zap.Error(err))
-		c.String(http.StatusInternalServerError, "Failed to read create organization page")
-		return
-	}
-
-	c.Data(http.StatusOK, "text/html; charset=utf-8", htmlContent)
+	adminGroup := api.Group("/admin")
+	adminHandler := admin.NewHandler()
+	adminGroup.GET("/", adminHandler.AdminPage)
+	adminGroup.GET("/stats", h.getAdminStats)
 }
 
 type adminStatsResponse struct {
