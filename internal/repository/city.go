@@ -45,3 +45,13 @@ func (r *cityRepository) GetAll(ctx context.Context) ([]domain.City, error) {
 	}
 	return cities, nil
 }
+
+func (r *cityRepository) Count(ctx context.Context) (int64, error) {
+	const query = `SELECT COUNT(*) FROM city WHERE deleted_at IS NULL`
+	var count int64
+	err := r.db.GetContext(ctx, &count, query)
+	if err != nil {
+		return 0, fmt.Errorf("count cities failed: %w", err)
+	}
+	return count, nil
+}

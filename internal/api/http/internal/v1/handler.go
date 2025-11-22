@@ -54,5 +54,7 @@ func (h *Handler) Init(api *gin.RouterGroup) {
 	h.initUsersRoutes(v1)
 	h.initBenefits(v1)
 	h.initCitiesRoutes(v1)
+	h.initOrganizationsRoutes(v1)
 	h.initSpeechRoutes(v1)
+	h.initAdminRoutes(v1)
 }

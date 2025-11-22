@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Создание льготы</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 32px;
+        }
+
+        .back-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .back-btn:hover {
+            background: #5a6268;
+        }
+
+        .content-section {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .content-section h2 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .form-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 5px;
+        }
+
+        .form-group .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 5px;
+        }
+
+        .form-group .checkbox-item {
+            display: flex;
+            align-items: center;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .submit-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.3s ease;
+        }
+
+        .submit-btn:hover {
+            background: #218838;
+        }
+
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 id="page-title">Создание новой льготы</h1>
+            <a href="/admin/" class="back-btn">← Назад к админке</a>
+        </div>
+
+        <div class="content-section">
+            <div id="create-benefit-message"></div>
+            <form id="create-benefit-form" onsubmit="createBenefit(event)">
+                <div class="form-group">
+                    <label for="title">Название *</label>
+                    <input type="text" id="title" name="title" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Описание *</label>
+                    <textarea id="description" name="description" required></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="type">Тип льготы *</label>
+                        <select id="type" name="type" required>
+                            <option value="">Выберите тип</option>
+                            <option value="federal">Федеральная</option>
+                            <option value="regional">Региональная</option>
+                            <option value="commercial">Коммерческая</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="category">Категория</label>
+                        <select id="category" name="category">
+                            <option value="">Не указано</option>
+                            <option value="medicine">Медицина</option>
+                            <option value="transport">Транспорт</option>
+                            <option value="food">Питание</option>
+                            <option value="clothing">Одежда</option>
+                            <option value="education">Образование</option>
+                            <option value="payments">Выплаты</option>
+                            <option value="other">Другое</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Целевые группы *</label>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="group-pensioners" name="target_groups" value="pensioners">
+                            <label for="group-pensioners">Пенсионеры</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="group-disabled" name="target_groups" value="disabled">
+                            <label for="group-disabled">Инвалиды</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="group-young-families" name="target_groups" value="young_families">
+                            <label for="group-young-families">Молодые семьи</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="group-low-income" name="target_groups" value="low_income">
+                            <label for="group-low-income">Малоимущие</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="group-students" name="target_groups" value="students">
+                            <label for="group-students">Студенты</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="group-large-families" name="target_groups" value="large_families">
+                            <label for="group-large-families">Многодетные семьи</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="group-children" name="target_groups" value="children">
+                            <label for="group-children">Дети</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="group-veterans" name="target_groups" value="veterans">
+                            <label for="group-veterans">Ветераны</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="requirement">Требования *</label>
+                    <textarea id="requirement" name="requirement" required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="how_to_use">Как использовать</label>
+                    <textarea id="how_to_use" name="how_to_use"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="source_url">Ссылка на источник *</label>
+                    <input type="url" id="source_url" name="source_url" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="valid_from">Действует с</label>
+                        <input type="date" id="valid_from" name="valid_from">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="valid_to">Действует до</label>
+                        <input type="date" id="valid_to" name="valid_to">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="latitude">Широта</label>
+                        <input type="number" id="latitude" name="latitude" step="any">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="longitude">Долгота</label>
+                        <input type="number" id="longitude" name="longitude" step="any">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="city_id">Город</label>
+                    <select id="city_id" name="city_id">
+                        <option value="">Не выбрано</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="organization_id">Организация</label>
+                    <select id="organization_id" name="organization_id">
+                        <option value="">Не выбрано</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Теги</label>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="tag-popular" name="tags" value="popular">
+                            <label for="tag-popular">Популярное</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="tag-new" name="tags" value="new">
+                            <label for="tag-new">Новое</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="tag-hot" name="tags" value="hot">
+                            <label for="tag-hot">Горячее</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="tag-recommended" name="tags" value="recommended">
+                            <label for="tag-recommended">Рекомендуемое</label>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="submit-btn" id="submit-btn">Создать льготу</button>
+                <input type="hidden" id="benefit-id" name="benefit_id">
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Загрузка списков городов и организаций при загрузке страницы
+        async function loadCities() {
+            try {
+                const response = await fetch('/api/v1/cities');
+                if (!response.ok) {
+                    throw new Error('Ошибка при загрузке городов');
+                }
+                const cities = await response.json();
+                const citySelect = document.getElementById('city_id');
+                
+                cities.forEach(city => {
+                    const option = document.createElement('option');
+                    option.value = city.id;
+                    option.textContent = city.name;
+                    citySelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Ошибка загрузки городов:', error);
+            }
+        }
+
+        async function loadOrganizations(cityID = null) {
+            try {
+                let url = '/api/v1/organizations';
+                if (cityID) {
+                    url += `?city_id=${cityID}`;
+                }
+                
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error('Ошибка при загрузке организаций');
+                }
+                const organizations = await response.json();
+                const orgSelect = document.getElementById('organization_id');
+                
+                // Очищаем список организаций
+                orgSelect.innerHTML = '<option value="">Не выбрано</option>';
+                
+                // Добавляем организации
+                organizations.forEach(org => {
+                    const option = document.createElement('option');
+                    option.value = org.id;
+                    option.textContent = org.name;
+                    orgSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Ошибка загрузки организаций:', error);
+                const orgSelect = document.getElementById('organization_id');
+                orgSelect.innerHTML = '<option value="">Ошибка загрузки</option>';
+            }
+        }
+
+        // Загрузка данных льготы для редактирования
+        async function loadBenefitForEdit(benefitId) {
+            try {
+                const response = await fetch(`/api/v1/benefits/${benefitId}`);
+                if (!response.ok) {
+                    throw new Error('Ошибка при загрузке льготы');
+                }
+                const benefit = await response.json();
+
+                // Заполняем форму данными льготы
+                document.getElementById('title').value = benefit.title || '';
+                document.getElementById('description').value = benefit.description || '';
+                document.getElementById('requirement').value = benefit.requirement || '';
+                document.getElementById('how_to_use').value = benefit.how_to_use || '';
+                document.getElementById('source_url').value = benefit.source_url || '';
+                
+                if (benefit.type) {
+                    document.getElementById('type').value = benefit.type;
+                }
+                
+                if (benefit.category) {
+                    document.getElementById('category').value = benefit.category;
+                }
+
+                if (benefit.valid_from) {
+                    const validFrom = new Date(benefit.valid_from);
+                    document.getElementById('valid_from').value = validFrom.toISOString().split('T')[0];
+                }
+
+                if (benefit.valid_to) {
+                    const validTo = new Date(benefit.valid_to);
+                    document.getElementById('valid_to').value = validTo.toISOString().split('T')[0];
+                }
+
+                if (benefit.latitude) {
+                    document.getElementById('latitude').value = benefit.latitude;
+                }
+
+                if (benefit.longitude) {
+                    document.getElementById('longitude').value = benefit.longitude;
+                }
+
+                if (benefit.city_id) {
+                    document.getElementById('city_id').value = benefit.city_id;
+                    // Загружаем организации для выбранного города
+                    loadOrganizations(benefit.city_id);
+                }
+
+                if (benefit.organization && benefit.organization.id) {
+                    document.getElementById('organization_id').value = benefit.organization.id;
+                }
+
+                // Устанавливаем целевые группы
+                if (benefit.target_groups && benefit.target_groups.length > 0) {
+                    benefit.target_groups.forEach(group => {
+                        const checkbox = document.querySelector(`input[name="target_groups"][value="${group}"]`);
+                        if (checkbox) {
+                            checkbox.checked = true;
+                        }
+                    });
+                }
+
+                // Устанавливаем теги
+                if (benefit.tags && benefit.tags.length > 0) {
+                    benefit.tags.forEach(tag => {
+                        const checkbox = document.querySelector(`input[name="tags"][value="${tag}"]`);
+                        if (checkbox) {
+                            checkbox.checked = true;
+                        }
+                    });
+                }
+
+                // Сохраняем ID для обновления
+                document.getElementById('benefit-id').value = benefitId;
+                
+                // Меняем заголовок и текст кнопки
+                document.getElementById('page-title').textContent = 'Редактирование льготы';
+                document.getElementById('submit-btn').textContent = 'Сохранить изменения';
+
+            } catch (error) {
+                console.error('Ошибка загрузки льготы:', error);
+                alert('Ошибка при загрузке данных льготы: ' + error.message);
+            }
+        }
+
+        // Загружаем данные при загрузке страницы
+        window.addEventListener('DOMContentLoaded', () => {
+            loadCities();
+            loadOrganizations();
+            
+            // Добавляем обработчик изменения города
+            const citySelect = document.getElementById('city_id');
+            citySelect.addEventListener('change', (e) => {
+                const selectedCityID = e.target.value;
+                loadOrganizations(selectedCityID || null);
+            });
+
+            // Проверяем, нужно ли загрузить данные для редактирования
+            const urlParams = new URLSearchParams(window.location.search);
+            const editMode = urlParams.get('edit');
+            const benefitId = urlParams.get('id');
+            
+            if (editMode === 'true' && benefitId) {
+                loadBenefitForEdit(benefitId);
+            }
+        });
+
+        async function createBenefit(event) {
+            event.preventDefault();
+            
+            const submitBtn = document.getElementById('submit-btn');
+            const messageContainer = document.getElementById('create-benefit-message');
+            
+            // Получаем данные формы
+            const formData = new FormData(event.target);
+            
+            // Собираем целевые группы
+            const targetGroups = [];
+            document.querySelectorAll('input[name="target_groups"]:checked').forEach(checkbox => {
+                targetGroups.push(checkbox.value);
+            });
+            
+            if (targetGroups.length === 0) {
+                messageContainer.innerHTML = '<div class="error">Выберите хотя бы одну целевую группу</div>';
+                return;
+            }
+            
+            // Собираем теги
+            const tags = [];
+            document.querySelectorAll('input[name="tags"]:checked').forEach(checkbox => {
+                tags.push(checkbox.value);
+            });
+            
+            // Формируем объект запроса
+            const requestData = {
+                title: formData.get('title'),
+                description: formData.get('description'),
+                type: formData.get('type'),
+                target_groups: targetGroups,
+                requirement: formData.get('requirement'),
+                source_url: formData.get('source_url'),
+                tags: tags
+            };
+            
+            // Добавляем опциональные поля
+            const category = formData.get('category');
+            if (category) {
+                requestData.category = category;
+            }
+            
+            const howToUse = formData.get('how_to_use');
+            if (howToUse) {
+                requestData.how_to_use = howToUse;
+            }
+            
+            const validFrom = formData.get('valid_from');
+            if (validFrom) {
+                requestData.valid_from = validFrom;
+            }
+            
+            const validTo = formData.get('valid_to');
+            if (validTo) {
+                requestData.valid_to = validTo;
+            }
+            
+            const latitude = formData.get('latitude');
+            if (latitude) {
+                requestData.latitude = parseFloat(latitude);
+            }
+            
+            const longitude = formData.get('longitude');
+            if (longitude) {
+                requestData.longitude = parseFloat(longitude);
+            }
+            
+            const cityId = formData.get('city_id');
+            if (cityId) {
+                requestData.city_id = cityId;
+            }
+            
+            const organizationId = formData.get('organization_id');
+            if (organizationId) {
+                requestData.organization_id = organizationId;
+            }
+
+            // Проверяем, это редактирование или создание
+            const benefitId = document.getElementById('benefit-id').value;
+            const isEdit = benefitId && benefitId !== '';
+            
+            // Отправляем запрос
+            submitBtn.disabled = true;
+            submitBtn.textContent = isEdit ? 'Сохранение...' : 'Создание...';
+            messageContainer.innerHTML = '';
+            
+            try {
+                const url = isEdit ? `/api/v1/benefits/${benefitId}` : '/api/v1/benefits';
+                const method = isEdit ? 'PUT' : 'POST';
+                
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Ошибка при создании льготы');
+                }
+                
+                // Успешное создание/обновление
+                if (isEdit) {
+                    messageContainer.innerHTML = `<div class="success">Льгота успешно обновлена!<br><a href="/admin/benefits/${benefitId}">Вернуться к деталям</a> | <a href="/admin/benefits">К списку льгот</a></div>`;
+                } else {
+                    messageContainer.innerHTML = `<div class="success">Льгота успешно создана! ID: ${data.id}<br><a href="/admin/">Вернуться к админке</a></div>`;
+                    event.target.reset();
+                }
+                
+            } catch (error) {
+                messageContainer.innerHTML = `<div class="error">Ошибка: ${error.message}</div>`;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = isEdit ? 'Сохранить изменения' : 'Создать льготу';
+            }
+        }
+    </script>
+</body>
+</html>
+

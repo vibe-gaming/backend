@@ -123,3 +123,55 @@ func (r *userRepository) UpdateUserGroups(ctx context.Context, userID uuid.UUID,
 	}
 	return nil
 }
+
+func (r *userRepository) Count(ctx context.Context) (int64, error) {
+	const query = `SELECT COUNT(*) FROM user WHERE deleted_at IS NULL`
+	var count int64
+	err := r.db.GetContext(ctx, &count, query)
+	if err != nil {
+		return 0, fmt.Errorf("count users failed: %w", err)
+	}
+	return count, nil
+}
+
+func (r *userRepository) GetUserGroupsStats(ctx context.Context) (map[string]int64, error) {
+	const query = `
+		SELECT 
+			group_type,
+			COUNT(*) as count
+		FROM (
+			SELECT 
+				JSON_UNQUOTE(JSON_EXTRACT(u.group_type, CONCAT('$[', t.idx, '].type'))) as group_type
+			FROM user u
+			CROSS JOIN JSON_TABLE(
+				JSON_ARRAY(0, 1, 2, 3, 4, 5, 6, 7, 8, 9),
+				'$[*]' COLUMNS (idx INT PATH '$')
+			) AS t
+			WHERE u.deleted_at IS NULL
+				AND JSON_UNQUOTE(JSON_EXTRACT(u.group_type, CONCAT('$[', t.idx, '].status'))) = 'verified'
+				AND JSON_UNQUOTE(JSON_EXTRACT(u.group_type, CONCAT('$[', t.idx, '].type'))) IS NOT NULL
+		) AS extracted_groups
+		WHERE group_type IS NOT NULL AND group_type != ''
+		GROUP BY group_type
+	`
+	
+	type groupStat struct {
+		GroupType string `db:"group_type"`
+		Count     int64  `db:"count"`
+	}
+	
+	var stats []groupStat
+	err := r.db.SelectContext(ctx, &stats, query)
+	if err != nil {
+		return nil, fmt.Errorf("get user groups stats failed: %w", err)
+	}
+	
+	result := make(map[string]int64)
+	for _, stat := range stats {
+		if stat.GroupType != "" {
+			result[stat.GroupType] = stat.Count
+		}
+	}
+	
+	return result, nil
+}

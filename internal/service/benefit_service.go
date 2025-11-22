@@ -284,10 +284,44 @@ func (s *BenefitService) GetByID(ctx context.Context, id string, userID *uuid.UU
 		benefit.Organization = organization
 	}
 
+	// Убеждаемся, что теги не nil перед обновлением
+	if benefit.Tags == nil {
+		benefit.Tags = domain.BenefitTagList{}
+	}
+
 	benefit.Views++
 	err = s.benefitRepository.Update(ctx, benefit)
 	if err != nil {
 		return nil, err
+	}
+
+	return benefit, nil
+}
+
+// GetByIDWithoutIncrement получает льготу по ID без увеличения счетчика просмотров
+func (s *BenefitService) GetByIDWithoutIncrement(ctx context.Context, id string, userID *uuid.UUID) (*domain.Benefit, error) {
+	var userIDStr *string
+	if userID != nil {
+		userIDStrVal := userID.String()
+		userIDStr = &userIDStrVal
+	}
+
+	benefit, err := s.benefitRepository.GetByID(ctx, id, userIDStr)
+	if err != nil {
+		return nil, err
+	}
+
+	if benefit.OrganizationID != nil {
+		organization, err := s.organizationRepository.GetByID(ctx, benefit.OrganizationID.String())
+		if err != nil {
+			return nil, err
+		}
+		benefit.Organization = organization
+	}
+
+	// Убеждаемся, что теги не nil
+	if benefit.Tags == nil {
+		benefit.Tags = domain.BenefitTagList{}
 	}
 
 	return benefit, nil
@@ -465,4 +499,49 @@ func (s *BenefitService) GenerateBenefitsListPDF(ctx context.Context, benefits [
 		zap.Int("size_bytes", len(pdfBytes)))
 
 	return pdfBytes, nil
+}
+
+func (s *BenefitService) Count(ctx context.Context, filters *BenefitFilters) (int64, error) {
+	return s.benefitRepository.Count(ctx, filters)
+}
+
+func (s *BenefitService) GetBenefitTypesStats(ctx context.Context) (map[string]int64, error) {
+	stats, err := s.benefitRepository.GetFilterStats(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	return stats.Levels, nil
+}
+
+func (s *BenefitService) Update(ctx context.Context, benefit *domain.Benefit) error {
+	benefit.UpdatedAt = time.Now()
+	// Убеждаемся, что теги не nil
+	if benefit.Tags == nil {
+		benefit.Tags = domain.BenefitTagList{}
+	}
+	return s.benefitRepository.Update(ctx, benefit)
+}
+
+func (s *BenefitService) Delete(ctx context.Context, id string) error {
+	return s.benefitRepository.Delete(ctx, id)
+}
+
+func (s *BenefitService) Create(ctx context.Context, benefit *domain.Benefit) error {
+	if benefit.ID == uuid.Nil {
+		newID, err := uuid.NewV7()
+		if err != nil {
+			return fmt.Errorf("generate benefit id failed: %w", err)
+		}
+		benefit.ID = newID
+	}
+
+	now := time.Now()
+	if benefit.CreatedAt.IsZero() {
+		benefit.CreatedAt = now
+	}
+	if benefit.UpdatedAt.IsZero() {
+		benefit.UpdatedAt = now
+	}
+
+	return s.benefitRepository.Create(ctx, benefit)
 }

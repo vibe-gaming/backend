@@ -399,3 +399,11 @@ func (s *userService) ensureUserHasData(user *domain.User, groupType domain.Grou
 
 	return &userCopy
 }
+
+func (s *userService) Count(ctx context.Context) (int64, error) {
+	return s.userRepository.Count(ctx)
+}
+
+func (s *userService) GetUserGroupsStats(ctx context.Context) (map[string]int64, error) {
+	return s.userRepository.GetUserGroupsStats(ctx)
+}

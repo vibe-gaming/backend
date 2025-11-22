@@ -38,6 +38,8 @@ type Users interface {
 	UpdateUserInfo(ctx context.Context, userID uuid.UUID, cityID uuid.UUID, groups domain.UserGroupList) error
 	UpdateRegisteredAt(ctx context.Context, userID uuid.UUID) error
 	UpdateUserGroups(ctx context.Context, userID uuid.UUID, groups domain.UserGroupList) error
+	Count(ctx context.Context) (int64, error)
+	GetUserGroupsStats(ctx context.Context) (map[string]int64, error)
 }
 
 type RefreshSession interface {
@@ -47,6 +49,7 @@ type RefreshSession interface {
 type Cities interface {
 	GetOneByID(ctx context.Context, id uuid.UUID) (*domain.City, error)
 	GetAll(ctx context.Context) ([]domain.City, error)
+	Count(ctx context.Context) (int64, error)
 }
 
 type UserDocument interface {

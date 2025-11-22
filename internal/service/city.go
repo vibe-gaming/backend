@@ -20,3 +20,7 @@ func newCityService(cityRepository repository.Cities) *cityService {
 func (s *cityService) GetAll(ctx context.Context) ([]domain.City, error) {
 	return s.cityRepository.GetAll(ctx)
 }
+
+func (s *cityService) Count(ctx context.Context) (int64, error) {
+	return s.cityRepository.Count(ctx)
+}

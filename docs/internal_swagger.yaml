@@ -2,9 +2,9 @@ basePath: /api/v1
 definitions:
   ErrorStruct:
     properties:
-      error_code:
+      ErrorCode:
         type: integer
-      error_message:
+      ErrorMessage:
         type: string
     type: object
   domain.City:
@@ -22,26 +22,58 @@ definitions:
       updated_at:
         type: string
     type: object
-  domain.GroupType:
-    enum:
-    - pensioners
-    - disabled
-    - young_families
-    - low_income
-    - students
-    - large_families
-    - children
-    - veterans
-    type: string
-    x-enum-varnames:
-    - UserGroupPensioners
-    - UserGroupDisabled
-    - UserGroupYoungFamilies
-    - UserGroupLowIncome
-    - UserGroupStudents
-    - UserGroupLargeFamilies
-    - UserGroupChildren
-    - UserGroupVeterans
+  domain.Organization:
+    properties:
+      buildings:
+        items:
+          $ref: '#/definitions/domain.OrganizationBuilding'
+        type: array
+      created_at:
+        type: string
+      deleted_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  domain.OrganizationBuilding:
+    properties:
+      address:
+        type: string
+      createdAt:
+        type: string
+      deletedAt:
+        type: string
+      endTime:
+        type: string
+      id:
+        type: string
+      isOpen:
+        type: boolean
+      latitude:
+        type: number
+      longitude:
+        type: number
+      organizationID:
+        type: string
+      phoneNumber:
+        type: string
+      startTime:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      type:
+        type: string
+      updatedAt:
+        type: string
+    type: object
   domain.UserDocument:
     properties:
       created_at:
@@ -51,7 +83,7 @@ definitions:
       document_number:
         type: string
       document_type:
-        $ref: '#/definitions/domain.UserDocumentType'
+        type: string
       id:
         type: string
       updated_at:
@@ -59,16 +91,6 @@ definitions:
       user_id:
         type: string
     type: object
-  domain.UserDocumentType:
-    enum:
-    - passport
-    - snils
-    - registration
-    type: string
-    x-enum-varnames:
-    - UserDocumentTypePassport
-    - UserDocumentTypeSNILS
-    - UserDocumentTypeRegistration
   domain.UserGroup:
     properties:
       error_message:
@@ -84,30 +106,13 @@ definitions:
         description: Когда отклонена
         type: string
       status:
-        $ref: '#/definitions/domain.VerificationStatus'
+        type: string
       type:
-        $ref: '#/definitions/domain.GroupType'
+        type: string
       verified_at:
         description: Когда подтверждена
         type: string
     type: object
-  domain.VerificationStatus:
-    enum:
-    - pending
-    - verified
-    - rejected
-    - expired
-    type: string
-    x-enum-comments:
-      VerificationStatusExpired: Истекла
-      VerificationStatusPending: Ожидает подтверждения
-      VerificationStatusRejected: Отклонена
-      VerificationStatusVerified: Подтверждена
-    x-enum-varnames:
-    - VerificationStatusPending
-    - VerificationStatusVerified
-    - VerificationStatusRejected
-    - VerificationStatusExpired
   repository.UserBenefitsStats:
     properties:
       total_benefits:
@@ -180,6 +185,78 @@ definitions:
         type: integer
       total:
         type: integer
+    type: object
+  v1.createBenefitRequest:
+    properties:
+      category:
+        type: string
+      city_id:
+        type: string
+      description:
+        type: string
+      how_to_use:
+        type: string
+      latitude:
+        type: number
+      longitude:
+        type: number
+      organization_id:
+        type: string
+      region:
+        items:
+          type: integer
+        type: array
+      requirement:
+        type: string
+      source_url:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      target_groups:
+        items:
+          type: string
+        type: array
+      title:
+        type: string
+      type:
+        type: string
+      valid_from:
+        type: string
+      valid_to:
+        type: string
+    required:
+    - description
+    - requirement
+    - source_url
+    - target_groups
+    - title
+    - type
+    type: object
+  v1.createBenefitResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+    type: object
+  v1.createOrganizationRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+    required:
+    - description
+    - name
+    type: object
+  v1.createOrganizationResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
     type: object
   v1.exchangeTokenRequest:
     properties:
@@ -278,7 +355,7 @@ definitions:
         type: string
       groups:
         items:
-          $ref: '#/definitions/domain.GroupType'
+          type: string
         type: array
     required:
     - city_id
@@ -383,7 +460,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: PDF файл
           schema:
             type: file
         "400":
@@ -399,7 +476,70 @@ paths:
       summary: Get Benefits List
       tags:
       - Benefits
+    post:
+      consumes:
+      - application/json
+      description: Создать новую льготу
+      parameters:
+      - description: Данные льготы
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/v1.createBenefitRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/v1.createBenefitResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+      summary: Create Benefit
+      tags:
+      - Benefits
   /benefits/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Удалить льготу (soft delete)
+      parameters:
+      - description: Benefit ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+      summary: Delete Benefit
+      tags:
+      - Benefits
     get:
       consumes:
       - application/json
@@ -432,6 +572,44 @@ paths:
       security:
       - UserAuth: []
       summary: Get Benefit By ID
+      tags:
+      - Benefits
+    put:
+      consumes:
+      - application/json
+      description: Обновить существующую льготу
+      parameters:
+      - description: Benefit ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Данные льготы
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/v1.createBenefitRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.createBenefitResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+      summary: Update Benefit
       tags:
       - Benefits
   /benefits/{id}/favorite:
@@ -618,6 +796,170 @@ paths:
       summary: Get Cities
       tags:
       - Cities
+  /organizations:
+    get:
+      consumes:
+      - application/json
+      description: Get all organizations, optionally filtered by city_id
+      parameters:
+      - description: City ID (UUID) to filter organizations
+        in: query
+        name: city_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Organization'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+      summary: Get Organizations
+      tags:
+      - Organizations
+    post:
+      consumes:
+      - application/json
+      description: Создать новую организацию
+      parameters:
+      - description: Данные организации
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/v1.createOrganizationRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/v1.createOrganizationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+      summary: Create Organization
+      tags:
+      - Organizations
+  /organizations/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Удалить организацию (soft delete)
+      parameters:
+      - description: Organization ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+      summary: Delete Organization
+      tags:
+      - Organizations
+    get:
+      consumes:
+      - application/json
+      description: Получить организацию по ID
+      parameters:
+      - description: Organization ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Organization'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+      summary: Get Organization By ID
+      tags:
+      - Organizations
+    put:
+      consumes:
+      - application/json
+      description: Обновить существующую организацию
+      parameters:
+      - description: Organization ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Данные организации
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/v1.createOrganizationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.createOrganizationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+      summary: Update Organization
+      tags:
+      - Organizations
   /speech/recognize:
     post:
       consumes:

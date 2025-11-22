@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Список льгот</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 32px;
+        }
+
+        .back-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .back-btn:hover {
+            background: #5a6268;
+        }
+
+        .filters-section {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .filter-group label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .filter-group input,
+        .filter-group select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #218838;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .content-section {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .benefits-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .benefits-table th {
+            background: #f8f9fa;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        .benefits-table td {
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .benefits-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .benefits-table tr {
+            cursor: pointer;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .pagination button {
+            padding: 8px 15px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            background: #f8f9fa;
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination .page-info {
+            padding: 8px 15px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Список льгот</h1>
+            <a href="/admin/" class="back-btn">← Назад к админке</a>
+        </div>
+
+        <div class="filters-section">
+            <div class="filters-grid">
+                <div class="filter-group">
+                    <label>Поиск</label>
+                    <input type="text" id="search" placeholder="Название или описание">
+                </div>
+                <div class="filter-group">
+                    <label>Тип</label>
+                    <select id="type">
+                        <option value="">Все типы</option>
+                        <option value="federal">Федеральная</option>
+                        <option value="regional">Региональная</option>
+                        <option value="commercial">Коммерческая</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Категория</label>
+                    <select id="category">
+                        <option value="">Все категории</option>
+                        <option value="medicine">Медицина</option>
+                        <option value="transport">Транспорт</option>
+                        <option value="food">Питание</option>
+                        <option value="clothing">Одежда</option>
+                        <option value="education">Образование</option>
+                        <option value="payments">Выплаты</option>
+                        <option value="other">Другое</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Сортировка</label>
+                    <select id="sort_by">
+                        <option value="created_at">Дата создания</option>
+                        <option value="views">Просмотры</option>
+                        <option value="updated_at">Дата обновления</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Порядок</label>
+                    <select id="order">
+                        <option value="desc">По убыванию</option>
+                        <option value="asc">По возрастанию</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>На странице</label>
+                    <select id="limit">
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+            </div>
+            <div class="filter-actions">
+                <button class="btn btn-primary" onclick="loadBenefits()">Применить фильтры</button>
+                <button class="btn btn-secondary" onclick="resetFilters()">Сбросить</button>
+            </div>
+        </div>
+
+        <div class="content-section">
+            <div id="error-message"></div>
+            <div id="benefits-container">
+                <div class="loading">Загрузка...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPage = 1;
+        let totalPages = 1;
+
+        function buildQueryParams() {
+            const params = new URLSearchParams();
+            
+            const search = document.getElementById('search').value.trim();
+            if (search) {
+                params.append('search', search);
+            }
+
+            const type = document.getElementById('type').value;
+            if (type) {
+                params.append('type', type);
+            }
+
+            const category = document.getElementById('category').value;
+            if (category) {
+                params.append('categories', category);
+            }
+
+            const sortBy = document.getElementById('sort_by').value;
+            params.append('sort_by', sortBy);
+
+            const order = document.getElementById('order').value;
+            params.append('order', order);
+
+            const limit = document.getElementById('limit').value;
+            params.append('limit', limit);
+            params.append('page', currentPage);
+
+            return params.toString();
+        }
+
+        async function loadBenefits() {
+            const container = document.getElementById('benefits-container');
+            const errorDiv = document.getElementById('error-message');
+            errorDiv.innerHTML = '';
+            
+            container.innerHTML = '<div class="loading">Загрузка...</div>';
+
+            try {
+                const queryParams = buildQueryParams();
+                const response = await fetch(`/api/v1/benefits?${queryParams}`);
+                
+                if (!response.ok) {
+                    throw new Error('Ошибка при загрузке льгот');
+                }
+
+                const data = await response.json();
+
+                if (data.benefits && data.benefits.length === 0) {
+                    container.innerHTML = '<div class="loading">Льготы не найдены</div>';
+                    return;
+                }
+
+                totalPages = Math.ceil(data.total / data.limit);
+                currentPage = data.page;
+
+                let tableHTML = `
+                    <table class="benefits-table">
+                        <thead>
+                            <tr>
+                                <th>Название</th>
+                                <th>Тип</th>
+                                <th>Категория</th>
+                                <th>Просмотры</th>
+                                <th>Дата создания</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                data.benefits.forEach(benefit => {
+                    const category = benefit.category || 'Не указано';
+                    const createdAt = new Date(benefit.created_at).toLocaleDateString('ru-RU');
+                    tableHTML += `
+                        <tr onclick="window.location.href='/admin/benefits/${benefit.id}'">
+                            <td>${escapeHtml(benefit.title)}</td>
+                            <td>${getTypeLabel(benefit.type)}</td>
+                            <td>${getCategoryLabel(category)}</td>
+                            <td>${benefit.views || 0}</td>
+                            <td>${createdAt}</td>
+                        </tr>
+                    `;
+                });
+
+                tableHTML += `
+                        </tbody>
+                    </table>
+                `;
+
+                // Добавляем пагинацию
+                tableHTML += generatePagination();
+
+                container.innerHTML = tableHTML;
+
+            } catch (error) {
+                errorDiv.innerHTML = `<div class="error">Ошибка: ${error.message}</div>`;
+                container.innerHTML = '';
+            }
+        }
+
+        function generatePagination() {
+            if (totalPages <= 1) return '';
+
+            let paginationHTML = '<div class="pagination">';
+            
+            // Кнопка "Предыдущая"
+            paginationHTML += `<button onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>Предыдущая</button>`;
+            
+            // Информация о странице
+            paginationHTML += `<span class="page-info">Страница ${currentPage} из ${totalPages}</span>`;
+            
+            // Кнопка "Следующая"
+            paginationHTML += `<button onclick="goToPage(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled' : ''}>Следующая</button>`;
+            
+            paginationHTML += '</div>';
+            return paginationHTML;
+        }
+
+        function goToPage(page) {
+            if (page < 1 || page > totalPages) return;
+            currentPage = page;
+            loadBenefits();
+        }
+
+        function resetFilters() {
+            document.getElementById('search').value = '';
+            document.getElementById('type').value = '';
+            document.getElementById('category').value = '';
+            document.getElementById('sort_by').value = 'created_at';
+            document.getElementById('order').value = 'desc';
+            document.getElementById('limit').value = '10';
+            currentPage = 1;
+            loadBenefits();
+        }
+
+        function getTypeLabel(type) {
+            const labels = {
+                'federal': 'Федеральная',
+                'regional': 'Региональная',
+                'commercial': 'Коммерческая'
+            };
+            return labels[type] || type;
+        }
+
+        function getCategoryLabel(category) {
+            const labels = {
+                'medicine': 'Медицина',
+                'transport': 'Транспорт',
+                'food': 'Питание',
+                'clothing': 'Одежда',
+                'education': 'Образование',
+                'payments': 'Выплаты',
+                'other': 'Другое'
+            };
+            return labels[category] || category;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Загружаем данные при загрузке страницы
+        window.addEventListener('DOMContentLoaded', () => {
+            loadBenefits();
+        });
+    </script>
+</body>
+</html>
+

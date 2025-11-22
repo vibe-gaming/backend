@@ -13,6 +13,7 @@ import (
 type FavoriteRepository interface {
 	GetByUserIDAndBenefitID(ctx context.Context, userID uuid.UUID, benefitID uuid.UUID) (*domain.Favorite, error)
 	GetByUserCount(ctx context.Context, userID uuid.UUID) (int64, error)
+	GetTotalCount(ctx context.Context) (int64, error)
 	Create(ctx context.Context, favorite *domain.Favorite) error
 	Update(ctx context.Context, favorite *domain.Favorite) error
 }
@@ -72,6 +73,18 @@ func (r *favoriteRepository) GetByUserCount(ctx context.Context, userID uuid.UUI
 	err := r.db.GetContext(ctx, &count, query, userID)
 	if err != nil {
 		return 0, err
+	}
+	return count, nil
+}
+
+func (r *favoriteRepository) GetTotalCount(ctx context.Context) (int64, error) {
+	const query = `
+		SELECT COUNT(*) FROM favorite WHERE deleted_at IS NULL
+	`
+	var count int64
+	err := r.db.GetContext(ctx, &count, query)
+	if err != nil {
+		return 0, fmt.Errorf("get total favorites count failed: %w", err)
 	}
 	return count, nil
 }

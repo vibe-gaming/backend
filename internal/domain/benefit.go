@@ -101,8 +101,8 @@ func (r *RegionList) Scan(value interface{}) error {
 
 // Value implements driver.Valuer interface
 func (r RegionList) Value() (driver.Value, error) {
-	if r == nil {
-		return nil, nil
+	if r == nil || len(r) == 0 {
+		return json.Marshal([]int{})
 	}
 	return json.Marshal(r)
 }
@@ -138,8 +138,8 @@ func (t *BenefitTagList) Scan(value interface{}) error {
 
 // Value implements driver.Valuer interface
 func (t BenefitTagList) Value() (driver.Value, error) {
-	if t == nil {
-		return nil, nil
+	if t == nil || len(t) == 0 {
+		return json.Marshal([]BenefitTag{})
 	}
 	return json.Marshal(t)
 }

@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Административная панель</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .stat-card.clickable {
+            cursor: pointer;
+        }
+
+        .stat-card.clickable:hover {
+            background: #f8f9fa;
+        }
+
+        .stat-card h3 {
+            color: #666;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-card .value {
+            color: #333;
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .stat-card .change {
+            color: #28a745;
+            font-size: 12px;
+        }
+
+        .content-section {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .content-section h2 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .refresh-btn:hover {
+            background: #5568d3;
+        }
+
+        .refresh-btn:active {
+            transform: scale(0.98);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        table th,
+        table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .form-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 5px;
+        }
+
+        .form-group .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 5px;
+        }
+
+        .form-group .checkbox-item {
+            display: flex;
+            align-items: center;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .submit-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.3s ease;
+        }
+
+        .submit-btn:hover {
+            background: #218838;
+        }
+
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Административная панель</h1>
+            <p>Статистика и управление системой</p>
+        </div>
+
+        <div id="error-container"></div>
+
+        <div class="stats-grid" id="stats-grid">
+            <div class="stat-card">
+                <h3>Всего пользователей</h3>
+                <div class="value" id="total-users">-</div>
+                <div class="change">Зарегистрировано</div>
+            </div>
+
+            <div class="stat-card clickable" onclick="window.location.href='/admin/benefits'">
+                <h3>Всего льгот</h3>
+                <div class="value" id="total-benefits">-</div>
+                <div class="change">В системе</div>
+            </div>
+
+            <div class="stat-card">
+                <h3>Городов</h3>
+                <div class="value" id="total-cities">-</div>
+                <div class="change">Доступно</div>
+            </div>
+
+            <div class="stat-card">
+                <h3>Избранных</h3>
+                <div class="value" id="total-favorites">-</div>
+                <div class="change">Добавлено</div>
+            </div>
+        </div>
+
+        <div class="content-section">
+            <h2>Статистика по группам пользователей</h2>
+            <div id="groups-stats">
+                <div class="loading">Загрузка...</div>
+            </div>
+        </div>
+
+        <div class="content-section">
+            <h2>Статистика по типам льгот</h2>
+            <div id="benefits-stats">
+                <div class="loading">Загрузка...</div>
+            </div>
+        </div>
+
+        <div class="content-section">
+            <h2>Управление</h2>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <a href="/admin/create-benefit" class="refresh-btn" style="text-decoration: none; display: inline-block;">Создать новую льготу</a>
+                <a href="/admin/organizations" class="refresh-btn" style="text-decoration: none; display: inline-block;">Список организаций</a>
+            </div>
+        </div>
+               
+
+        <button class="refresh-btn" onclick="loadStats()">Обновить данные</button>
+    </div>
+
+    <script>
+        async function loadStats() {
+            try {
+                const response = await fetch('/admin/stats');
+                if (!response.ok) {
+                    throw new Error('Ошибка загрузки данных');
+                }
+                const data = await response.json();
+
+                // Обновляем основные статистики
+                document.getElementById('total-users').textContent = data.total_users || 0;
+                document.getElementById('total-benefits').textContent = data.total_benefits || 0;
+                document.getElementById('total-cities').textContent = data.total_cities || 0;
+                document.getElementById('total-favorites').textContent = data.total_favorites || 0;
+
+                // Обновляем статистику по группам
+                const groupsContainer = document.getElementById('groups-stats');
+                if (data.user_groups && Object.keys(data.user_groups).length > 0) {
+                    let groupsHTML = '<table><thead><tr><th>Группа</th><th>Количество</th></tr></thead><tbody>';
+                    for (const [group, count] of Object.entries(data.user_groups)) {
+                        groupsHTML += `<tr><td>${group}</td><td>${count}</td></tr>`;
+                    }
+                    groupsHTML += '</tbody></table>';
+                    groupsContainer.innerHTML = groupsHTML;
+                } else {
+                    groupsContainer.innerHTML = '<p>Нет данных</p>';
+                }
+
+                // Обновляем статистику по типам льгот
+                const benefitsContainer = document.getElementById('benefits-stats');
+                if (data.benefit_types && Object.keys(data.benefit_types).length > 0) {
+                    let benefitsHTML = '<table><thead><tr><th>Тип</th><th>Количество</th></tr></thead><tbody>';
+                    for (const [type, count] of Object.entries(data.benefit_types)) {
+                        benefitsHTML += `<tr><td>${type}</td><td>${count}</td></tr>`;
+                    }
+                    benefitsHTML += '</tbody></table>';
+                    benefitsContainer.innerHTML = benefitsHTML;
+                } else {
+                    benefitsContainer.innerHTML = '<p>Нет данных</p>';
+                }
+
+                // Очищаем ошибки
+                document.getElementById('error-container').innerHTML = '';
+            } catch (error) {
+                document.getElementById('error-container').innerHTML = 
+                    `<div class="error">Ошибка: ${error.message}</div>`;
+            }
+        }
+
+        // Загружаем статистику при загрузке страницы
+        loadStats();
+
+        // Автообновление каждые 30 секунд
+        setInterval(loadStats, 30000);
+    </script>
+</body>
+</html>
+

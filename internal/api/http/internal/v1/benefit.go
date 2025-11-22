@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -18,6 +19,9 @@ import (
 func (h *Handler) initBenefits(api *gin.RouterGroup) {
 	benefits := api.Group("/benefits")
 	{
+		benefits.POST("", h.createBenefit)
+		benefits.PUT("/:id", h.updateBenefit)
+		benefits.DELETE("/:id", h.deleteBenefit)
 		benefits.GET("", h.optionalUserIdentityMiddleware, h.getBenefitsList)
 		benefits.GET("/stats", h.optionalUserIdentityMiddleware, h.getBenefitsFilterStats)
 		benefits.GET("/:id", h.optionalUserIdentityMiddleware, h.getBenefitByID)
@@ -806,4 +810,449 @@ func (h *Handler) getBenefitPDFDownload(c *gin.Context) {
 
 	// Отправляем PDF
 	c.Data(http.StatusOK, "application/pdf", pdfBytes)
+}
+
+type createBenefitRequest struct {
+	Title        string    `json:"title" binding:"required"`
+	Description  string    `json:"description" binding:"required"`
+	ValidFrom    *string   `json:"valid_from,omitempty"`
+	ValidTo      *string   `json:"valid_to,omitempty"`
+	Type         string    `json:"type" binding:"required"`
+	TargetGroups []string  `json:"target_groups" binding:"required"`
+	Longitude    *float64  `json:"longitude,omitempty"`
+	Latitude     *float64  `json:"latitude,omitempty"`
+	CityID       *string   `json:"city_id,omitempty"`
+	Region       []int     `json:"region,omitempty"`
+	Category     *string   `json:"category,omitempty"`
+	Requirement  string    `json:"requirement" binding:"required"`
+	HowToUse     *string   `json:"how_to_use,omitempty"`
+	SourceURL    string    `json:"source_url" binding:"required"`
+	Tags         []string  `json:"tags,omitempty"`
+	OrganizationID *string `json:"organization_id,omitempty"`
+}
+
+type createBenefitResponse struct {
+	ID        string `json:"id"`
+	CreatedAt string `json:"created_at"`
+}
+
+// @Summary Create Benefit
+// @Tags Benefits
+// @Description Создать новую льготу
+// @ModuleID createBenefit
+// @Accept  json
+// @Produce  json
+// @Param input body createBenefitRequest true "Данные льготы"
+// @Success 201 {object} createBenefitResponse
+// @Failure 400 {object} ErrorStruct
+// @Failure 500 {object} ErrorStruct
+// @Router /benefits [post]
+func (h *Handler) createBenefit(c *gin.Context) {
+	var req createBenefitRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Error("invalid request", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request", "details": err.Error()})
+		return
+	}
+
+	// Валидация типа льготы
+	validTypes := map[string]bool{
+		string(domain.Federal):    true,
+		string(domain.Regional):   true,
+		string(domain.Commercial): true,
+	}
+	if !validTypes[req.Type] {
+		logger.Error("invalid benefit type", zap.String("type", req.Type))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid benefit type. Valid values: federal, regional, commercial"})
+		return
+	}
+
+	// Валидация групп
+	validGroups := map[string]bool{
+		string(domain.Pensioners):    true,
+		string(domain.Disabled):       true,
+		string(domain.YoungFamilies):  true,
+		string(domain.LowIncome):      true,
+		string(domain.Students):       true,
+		string(domain.LargeFamilies):  true,
+		string(domain.Children):      true,
+		string(domain.Veterans):      true,
+	}
+	for _, group := range req.TargetGroups {
+		if !validGroups[group] {
+			logger.Error("invalid target group", zap.String("group", group))
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid target group: %s", group)})
+			return
+		}
+	}
+
+	// Валидация категории (если указана)
+	if req.Category != nil {
+		validCategories := map[string]bool{
+			string(domain.Medicine):  true,
+			string(domain.Transport): true,
+			string(domain.Food):      true,
+			string(domain.Clothing):  true,
+			string(domain.Education): true,
+			string(domain.Payments):  true,
+			string(domain.Other):     true,
+		}
+		if !validCategories[*req.Category] {
+			logger.Error("invalid category", zap.String("category", *req.Category))
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid category: %s", *req.Category)})
+			return
+		}
+	}
+
+	// Парсинг дат
+	var validFrom *time.Time
+	if req.ValidFrom != nil && *req.ValidFrom != "" {
+		parsed, err := time.Parse("2006-01-02", *req.ValidFrom)
+		if err != nil {
+			logger.Error("invalid valid_from date format", zap.Error(err))
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid valid_from date format. Use YYYY-MM-DD"})
+			return
+		}
+		validFrom = &parsed
+	}
+
+	var validTo *time.Time
+	if req.ValidTo != nil && *req.ValidTo != "" {
+		parsed, err := time.Parse("2006-01-02", *req.ValidTo)
+		if err != nil {
+			logger.Error("invalid valid_to date format", zap.Error(err))
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid valid_to date format. Use YYYY-MM-DD"})
+			return
+		}
+		validTo = &parsed
+	}
+
+	// Конвертация групп
+	targetGroups := make(domain.TargetGroupList, 0, len(req.TargetGroups))
+	for _, group := range req.TargetGroups {
+		targetGroups = append(targetGroups, domain.TargetGroup(group))
+	}
+
+	// Конвертация тегов
+	tags := make(domain.BenefitTagList, 0, len(req.Tags))
+	for _, tag := range req.Tags {
+		tags = append(tags, domain.BenefitTag(tag))
+	}
+
+	// Конвертация CityID
+	var cityID *uuid.UUID
+	if req.CityID != nil && *req.CityID != "" {
+		parsedCityID, err := uuid.Parse(*req.CityID)
+		if err != nil {
+			logger.Error("invalid city_id format", zap.Error(err))
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid city_id format"})
+			return
+		}
+		cityID = &parsedCityID
+	}
+
+	// Конвертация OrganizationID
+	var organizationID *uuid.UUID
+	if req.OrganizationID != nil && *req.OrganizationID != "" {
+		parsedOrgID, err := uuid.Parse(*req.OrganizationID)
+		if err != nil {
+			logger.Error("invalid organization_id format", zap.Error(err))
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid organization_id format"})
+			return
+		}
+		organizationID = &parsedOrgID
+	}
+
+	// Конвертация категории
+	var category *domain.Category
+	if req.Category != nil && *req.Category != "" {
+		cat := domain.Category(*req.Category)
+		category = &cat
+	}
+
+	// Обработка Region - если не указан, используем пустой массив
+	var region domain.RegionList
+	if req.Region != nil {
+		region = domain.RegionList(req.Region)
+	} else {
+		region = domain.RegionList{}
+	}
+
+	// Создание объекта Benefit
+	benefit := &domain.Benefit{
+		Title:          req.Title,
+		Description:    req.Description,
+		ValidFrom:      validFrom,
+		ValidTo:        validTo,
+		Type:           domain.BenefitLevel(req.Type),
+		TargetGroupIDs: targetGroups,
+		Longitude:      req.Longitude,
+		Latitude:       req.Latitude,
+		CityID:         cityID,
+		Region:         region,
+		Category:       category,
+		Requirement:    req.Requirement,
+		HowToUse:       req.HowToUse,
+		SourceURL:      req.SourceURL,
+		Tags:           tags,
+		Views:          0,
+		OrganizationID: organizationID,
+	}
+
+	// Создание льготы через сервис
+	if err := h.services.Benefits.Create(c.Request.Context(), benefit); err != nil {
+		logger.Error("failed to create benefit", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create benefit"})
+		return
+	}
+
+	response := createBenefitResponse{
+		ID:        benefit.ID.String(),
+		CreatedAt: benefit.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	}
+
+	c.JSON(http.StatusCreated, response)
+}
+
+// @Summary Update Benefit
+// @Tags Benefits
+// @Description Обновить существующую льготу
+// @ModuleID updateBenefit
+// @Accept  json
+// @Produce  json
+// @Param id path string true "Benefit ID (UUID)"
+// @Param input body createBenefitRequest true "Данные льготы"
+// @Success 200 {object} createBenefitResponse
+// @Failure 400 {object} ErrorStruct
+// @Failure 404 {object} ErrorStruct
+// @Failure 500 {object} ErrorStruct
+// @Router /benefits/{id} [put]
+func (h *Handler) updateBenefit(c *gin.Context) {
+	id := c.Param("id")
+	logger.Info("updateBenefit called", zap.String("id", id))
+	
+	if id == "" {
+		logger.Error("benefit id is empty")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "benefit id is required"})
+		return
+	}
+
+	// Получаем существующую льготу без увеличения просмотров
+	existingBenefit, err := h.services.Benefits.GetByIDWithoutIncrement(c.Request.Context(), id, nil)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			logger.Error("benefit not found", zap.String("id", id))
+			c.JSON(http.StatusNotFound, gin.H{"error": "benefit not found"})
+			return
+		}
+		logger.Error("failed to get benefit", zap.Error(err), zap.String("id", id))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get benefit", "details": err.Error()})
+		return
+	}
+	
+	logger.Info("benefit loaded for update", 
+		zap.String("id", id),
+		zap.String("title", existingBenefit.Title),
+		zap.Any("tags", existingBenefit.Tags))
+
+	var req createBenefitRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Error("invalid request", zap.Error(err), zap.String("id", id))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request", "details": err.Error()})
+		return
+	}
+	
+	logger.Info("request parsed", zap.String("id", id), zap.String("title", req.Title))
+
+	// Валидация типа льготы
+	validTypes := map[string]bool{
+		string(domain.Federal):    true,
+		string(domain.Regional):   true,
+		string(domain.Commercial): true,
+	}
+	if !validTypes[req.Type] {
+		logger.Error("invalid benefit type", zap.String("type", req.Type))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid benefit type. Valid values: federal, regional, commercial"})
+		return
+	}
+
+	// Валидация групп
+	validGroups := map[string]bool{
+		string(domain.Pensioners):    true,
+		string(domain.Disabled):      true,
+		string(domain.YoungFamilies): true,
+		string(domain.LowIncome):    true,
+		string(domain.Students):      true,
+		string(domain.LargeFamilies): true,
+		string(domain.Children):      true,
+		string(domain.Veterans):      true,
+	}
+	for _, group := range req.TargetGroups {
+		if !validGroups[group] {
+			logger.Error("invalid target group", zap.String("group", group))
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid target group: %s", group)})
+			return
+		}
+	}
+
+	// Валидация категории (если указана)
+	if req.Category != nil {
+		validCategories := map[string]bool{
+			string(domain.Medicine):  true,
+			string(domain.Transport): true,
+			string(domain.Food):      true,
+			string(domain.Clothing):  true,
+			string(domain.Education): true,
+			string(domain.Payments):  true,
+			string(domain.Other):     true,
+		}
+		if !validCategories[*req.Category] {
+			logger.Error("invalid category", zap.String("category", *req.Category))
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid category: %s", *req.Category)})
+			return
+		}
+	}
+
+	// Парсинг дат
+	var validFrom *time.Time
+	if req.ValidFrom != nil && *req.ValidFrom != "" {
+		parsed, err := time.Parse("2006-01-02", *req.ValidFrom)
+		if err != nil {
+			logger.Error("invalid valid_from date format", zap.Error(err))
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid valid_from date format. Use YYYY-MM-DD"})
+			return
+		}
+		validFrom = &parsed
+	}
+
+	var validTo *time.Time
+	if req.ValidTo != nil && *req.ValidTo != "" {
+		parsed, err := time.Parse("2006-01-02", *req.ValidTo)
+		if err != nil {
+			logger.Error("invalid valid_to date format", zap.Error(err))
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid valid_to date format. Use YYYY-MM-DD"})
+			return
+		}
+		validTo = &parsed
+	}
+
+	// Конвертация групп
+	targetGroups := make(domain.TargetGroupList, 0, len(req.TargetGroups))
+	for _, group := range req.TargetGroups {
+		targetGroups = append(targetGroups, domain.TargetGroup(group))
+	}
+
+	// Конвертация тегов
+	tags := make(domain.BenefitTagList, 0, len(req.Tags))
+	for _, tag := range req.Tags {
+		tags = append(tags, domain.BenefitTag(tag))
+	}
+
+	// Конвертация CityID
+	var cityID *uuid.UUID
+	if req.CityID != nil && *req.CityID != "" {
+		parsedCityID, err := uuid.Parse(*req.CityID)
+		if err != nil {
+			logger.Error("invalid city_id format", zap.Error(err))
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid city_id format"})
+			return
+		}
+		cityID = &parsedCityID
+	}
+
+	// Конвертация OrganizationID
+	var organizationID *uuid.UUID
+	if req.OrganizationID != nil && *req.OrganizationID != "" {
+		parsedOrgID, err := uuid.Parse(*req.OrganizationID)
+		if err != nil {
+			logger.Error("invalid organization_id format", zap.Error(err))
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid organization_id format"})
+			return
+		}
+		organizationID = &parsedOrgID
+	}
+
+	// Конвертация категории
+	var category *domain.Category
+	if req.Category != nil && *req.Category != "" {
+		cat := domain.Category(*req.Category)
+		category = &cat
+	}
+
+	// Обновление объекта Benefit
+	existingBenefit.Title = req.Title
+	existingBenefit.Description = req.Description
+	existingBenefit.ValidFrom = validFrom
+	existingBenefit.ValidTo = validTo
+	existingBenefit.Type = domain.BenefitLevel(req.Type)
+	existingBenefit.TargetGroupIDs = targetGroups
+	existingBenefit.Longitude = req.Longitude
+	existingBenefit.Latitude = req.Latitude
+	existingBenefit.CityID = cityID
+	// Обработка Region - если не указан, используем существующее значение или пустой массив
+	if req.Region != nil {
+		existingBenefit.Region = domain.RegionList(req.Region)
+	} else if existingBenefit.Region == nil {
+		existingBenefit.Region = domain.RegionList{}
+	}
+	existingBenefit.Category = category
+	existingBenefit.Requirement = req.Requirement
+	existingBenefit.HowToUse = req.HowToUse
+	existingBenefit.SourceURL = req.SourceURL
+	existingBenefit.Tags = tags
+	existingBenefit.OrganizationID = organizationID
+
+	// Обновление льготы через сервис
+	if err := h.services.Benefits.Update(c.Request.Context(), existingBenefit); err != nil {
+		logger.Error("failed to update benefit", 
+			zap.Error(err),
+			zap.String("benefit_id", id),
+			zap.Any("city_id", existingBenefit.CityID),
+			zap.Any("organization_id", existingBenefit.OrganizationID),
+			zap.Any("tags", existingBenefit.Tags))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update benefit", "details": err.Error()})
+		return
+	}
+
+	response := createBenefitResponse{
+		ID:        existingBenefit.ID.String(),
+		CreatedAt: existingBenefit.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// @Summary Delete Benefit
+// @Tags Benefits
+// @Description Удалить льготу (soft delete)
+// @ModuleID deleteBenefit
+// @Accept  json
+// @Produce  json
+// @Param id path string true "Benefit ID (UUID)"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} ErrorStruct
+// @Failure 404 {object} ErrorStruct
+// @Failure 500 {object} ErrorStruct
+// @Router /benefits/{id} [delete]
+func (h *Handler) deleteBenefit(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		logger.Error("benefit id is empty")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "benefit id is required"})
+		return
+	}
+
+	err := h.services.Benefits.Delete(c.Request.Context(), id)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			logger.Error("benefit not found", zap.String("id", id))
+			c.JSON(http.StatusNotFound, gin.H{"error": "benefit not found"})
+			return
+		}
+		logger.Error("failed to delete benefit", zap.Error(err), zap.String("id", id))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete benefit", "details": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "benefit deleted successfully"})
 }

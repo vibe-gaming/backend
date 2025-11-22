@@ -126,9 +126,53 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "PDF файл",
                         "schema": {
                             "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Создать новую льготу",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Benefits"
+                ],
+                "summary": "Create Benefit",
+                "parameters": [
+                    {
+                        "description": "Данные льготы",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v1.createBenefitRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/v1.createBenefitResponse"
                         }
                     },
                     "400": {
@@ -330,6 +374,114 @@
                         }
                     }
                 }
+            },
+            "put": {
+                "description": "Обновить существующую льготу",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Benefits"
+                ],
+                "summary": "Update Benefit",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Benefit ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Данные льготы",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v1.createBenefitRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v1.createBenefitResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Удалить льготу (soft delete)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Benefits"
+                ],
+                "summary": "Delete Benefit",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Benefit ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    }
+                }
             }
         },
         "/benefits/{id}/favorite": {
@@ -459,6 +611,254 @@
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    }
+                }
+            }
+        },
+        "/organizations": {
+            "get": {
+                "description": "Get all organizations, optionally filtered by city_id",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Organizations"
+                ],
+                "summary": "Get Organizations",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "City ID (UUID) to filter organizations",
+                        "name": "city_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/domain.Organization"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Создать новую организацию",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Organizations"
+                ],
+                "summary": "Create Organization",
+                "parameters": [
+                    {
+                        "description": "Данные организации",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v1.createOrganizationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/v1.createOrganizationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    }
+                }
+            }
+        },
+        "/organizations/{id}": {
+            "get": {
+                "description": "Получить организацию по ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Organizations"
+                ],
+                "summary": "Get Organization By ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Organization ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.Organization"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Обновить существующую организацию",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Organizations"
+                ],
+                "summary": "Update Organization",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Organization ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Данные организации",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v1.createOrganizationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v1.createOrganizationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Удалить организацию (soft delete)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Organizations"
+                ],
+                "summary": "Delete Organization",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Organization ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorStruct"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/ErrorStruct"
                         }
@@ -845,10 +1245,10 @@
         "ErrorStruct": {
             "type": "object",
             "properties": {
-                "error_code": {
+                "ErrorCode": {
                     "type": "integer"
                 },
-                "error_message": {
+                "ErrorMessage": {
                     "type": "string"
                 }
             }
@@ -876,28 +1276,84 @@
                 }
             }
         },
-        "domain.GroupType": {
-            "type": "string",
-            "enum": [
-                "pensioners",
-                "disabled",
-                "young_families",
-                "low_income",
-                "students",
-                "large_families",
-                "children",
-                "veterans"
-            ],
-            "x-enum-varnames": [
-                "UserGroupPensioners",
-                "UserGroupDisabled",
-                "UserGroupYoungFamilies",
-                "UserGroupLowIncome",
-                "UserGroupStudents",
-                "UserGroupLargeFamilies",
-                "UserGroupChildren",
-                "UserGroupVeterans"
-            ]
+        "domain.Organization": {
+            "type": "object",
+            "properties": {
+                "buildings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.OrganizationBuilding"
+                    }
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "deleted_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.OrganizationBuilding": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "deletedAt": {
+                    "type": "string"
+                },
+                "endTime": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isOpen": {
+                    "type": "boolean"
+                },
+                "latitude": {
+                    "type": "number"
+                },
+                "longitude": {
+                    "type": "number"
+                },
+                "organizationID": {
+                    "type": "string"
+                },
+                "phoneNumber": {
+                    "type": "string"
+                },
+                "startTime": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "type": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
         },
         "domain.UserDocument": {
             "type": "object",
@@ -912,7 +1368,7 @@
                     "type": "string"
                 },
                 "document_type": {
-                    "$ref": "#/definitions/domain.UserDocumentType"
+                    "type": "string"
                 },
                 "id": {
                     "type": "string"
@@ -924,19 +1380,6 @@
                     "type": "string"
                 }
             }
-        },
-        "domain.UserDocumentType": {
-            "type": "string",
-            "enum": [
-                "passport",
-                "snils",
-                "registration"
-            ],
-            "x-enum-varnames": [
-                "UserDocumentTypePassport",
-                "UserDocumentTypeSNILS",
-                "UserDocumentTypeRegistration"
-            ]
         },
         "domain.UserGroup": {
             "type": "object",
@@ -958,37 +1401,16 @@
                     "type": "string"
                 },
                 "status": {
-                    "$ref": "#/definitions/domain.VerificationStatus"
+                    "type": "string"
                 },
                 "type": {
-                    "$ref": "#/definitions/domain.GroupType"
+                    "type": "string"
                 },
                 "verified_at": {
                     "description": "Когда подтверждена",
                     "type": "string"
                 }
             }
-        },
-        "domain.VerificationStatus": {
-            "type": "string",
-            "enum": [
-                "pending",
-                "verified",
-                "rejected",
-                "expired"
-            ],
-            "x-enum-comments": {
-                "VerificationStatusExpired": "Истекла",
-                "VerificationStatusPending": "Ожидает подтверждения",
-                "VerificationStatusRejected": "Отклонена",
-                "VerificationStatusVerified": "Подтверждена"
-            },
-            "x-enum-varnames": [
-                "VerificationStatusPending",
-                "VerificationStatusVerified",
-                "VerificationStatusRejected",
-                "VerificationStatusExpired"
-            ]
         },
         "repository.UserBenefitsStats": {
             "type": "object",
@@ -1098,6 +1520,113 @@
                 },
                 "total": {
                     "type": "integer"
+                }
+            }
+        },
+        "v1.createBenefitRequest": {
+            "type": "object",
+            "required": [
+                "description",
+                "requirement",
+                "source_url",
+                "target_groups",
+                "title",
+                "type"
+            ],
+            "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "city_id": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "how_to_use": {
+                    "type": "string"
+                },
+                "latitude": {
+                    "type": "number"
+                },
+                "longitude": {
+                    "type": "number"
+                },
+                "organization_id": {
+                    "type": "string"
+                },
+                "region": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "requirement": {
+                    "type": "string"
+                },
+                "source_url": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "target_groups": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "title": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "valid_from": {
+                    "type": "string"
+                },
+                "valid_to": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.createBenefitResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.createOrganizationRequest": {
+            "type": "object",
+            "required": [
+                "description",
+                "name"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.createOrganizationResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
                 }
             }
         },
@@ -1253,7 +1782,7 @@
                 "groups": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/domain.GroupType"
+                        "type": "string"
                     }
                 }
             }

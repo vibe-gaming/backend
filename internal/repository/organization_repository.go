@@ -13,6 +13,8 @@ import (
 type OrganizationRepository interface {
 	Create(ctx context.Context, organization *domain.Organization) error
 	GetByID(ctx context.Context, id string) (*domain.Organization, error)
+	GetAll(ctx context.Context) ([]domain.Organization, error)
+	GetAllByCityID(ctx context.Context, cityID string) ([]domain.Organization, error)
 	Update(ctx context.Context, organization *domain.Organization) error
 	Delete(ctx context.Context, id string) error
 }
@@ -87,6 +89,53 @@ func (r *organizationRepository) GetByID(ctx context.Context, id string) (*domai
 	organization.Buildings = buildings
 
 	return &organization, nil
+}
+
+func (r *organizationRepository) GetAll(ctx context.Context) ([]domain.Organization, error) {
+	const query = `
+	SELECT 
+		BIN_TO_UUID(id) as id, 
+		name, 
+		description, 
+		created_at, 
+		updated_at, 
+		deleted_at 
+	FROM organization 
+	WHERE deleted_at IS NULL
+	ORDER BY name ASC
+	`
+	var organizations []domain.Organization
+	err := r.db.SelectContext(ctx, &organizations, query)
+	if err != nil {
+		logger.Error("failed to get organizations", zap.Error(err))
+		return nil, fmt.Errorf("failed to get organizations: %w", err)
+	}
+	return organizations, nil
+}
+
+func (r *organizationRepository) GetAllByCityID(ctx context.Context, cityID string) ([]domain.Organization, error) {
+	const query = `
+	SELECT DISTINCT
+		BIN_TO_UUID(o.id) as id, 
+		o.name, 
+		o.description, 
+		o.created_at, 
+		o.updated_at, 
+		o.deleted_at 
+	FROM organization o
+	INNER JOIN benefit b ON b.organization_id = o.id
+	WHERE o.deleted_at IS NULL 
+		AND b.deleted_at IS NULL
+		AND b.city_id = UUID_TO_BIN(?)
+	ORDER BY o.name ASC
+	`
+	var organizations []domain.Organization
+	err := r.db.SelectContext(ctx, &organizations, query, cityID)
+	if err != nil {
+		logger.Error("failed to get organizations by city", zap.Error(err), zap.String("city_id", cityID))
+		return nil, fmt.Errorf("failed to get organizations by city: %w", err)
+	}
+	return organizations, nil
 }
 
 func (r *organizationRepository) Update(ctx context.Context, organization *domain.Organization) error {
