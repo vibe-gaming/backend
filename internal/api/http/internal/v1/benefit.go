@@ -278,7 +278,8 @@ func (h *Handler) getBenefitsList(c *gin.Context) {
 			filters.SortBy = "created_at"
 		}
 	} else {
-		filters.SortBy = "created_at"
+		// Если сортировка не указана, оставляем пустым для сортировки по типу по умолчанию
+		filters.SortBy = ""
 	}
 
 	order := c.Query("order")
@@ -813,22 +814,22 @@ func (h *Handler) getBenefitPDFDownload(c *gin.Context) {
 }
 
 type createBenefitRequest struct {
-	Title        string    `json:"title" binding:"required"`
-	Description  string    `json:"description" binding:"required"`
-	ValidFrom    *string   `json:"valid_from,omitempty"`
-	ValidTo      *string   `json:"valid_to,omitempty"`
-	Type         string    `json:"type" binding:"required"`
-	TargetGroups []string  `json:"target_groups" binding:"required"`
-	Longitude    *float64  `json:"longitude,omitempty"`
-	Latitude     *float64  `json:"latitude,omitempty"`
-	CityID       *string   `json:"city_id,omitempty"`
-	Region       []int     `json:"region,omitempty"`
-	Category     *string   `json:"category,omitempty"`
-	Requirement  string    `json:"requirement" binding:"required"`
-	HowToUse     *string   `json:"how_to_use,omitempty"`
-	SourceURL    string    `json:"source_url" binding:"required"`
-	Tags         []string  `json:"tags,omitempty"`
-	OrganizationID *string `json:"organization_id,omitempty"`
+	Title          string   `json:"title" binding:"required"`
+	Description    string   `json:"description" binding:"required"`
+	ValidFrom      *string  `json:"valid_from,omitempty"`
+	ValidTo        *string  `json:"valid_to,omitempty"`
+	Type           string   `json:"type" binding:"required"`
+	TargetGroups   []string `json:"target_groups" binding:"required"`
+	Longitude      *float64 `json:"longitude,omitempty"`
+	Latitude       *float64 `json:"latitude,omitempty"`
+	CityID         *string  `json:"city_id,omitempty"`
+	Region         []int    `json:"region,omitempty"`
+	Category       *string  `json:"category,omitempty"`
+	Requirement    string   `json:"requirement" binding:"required"`
+	HowToUse       *string  `json:"how_to_use,omitempty"`
+	SourceURL      string   `json:"source_url" binding:"required"`
+	Tags           []string `json:"tags,omitempty"`
+	OrganizationID *string  `json:"organization_id,omitempty"`
 }
 
 type createBenefitResponse struct {
@@ -870,11 +871,11 @@ func (h *Handler) createBenefit(c *gin.Context) {
 	// Валидация групп
 	validGroups := map[string]bool{
 		string(domain.Pensioners):    true,
-		string(domain.Disabled):       true,
-		string(domain.YoungFamilies):  true,
-		string(domain.LowIncome):      true,
-		string(domain.Students):       true,
-		string(domain.LargeFamilies):  true,
+		string(domain.Disabled):      true,
+		string(domain.YoungFamilies): true,
+		string(domain.LowIncome):     true,
+		string(domain.Students):      true,
+		string(domain.LargeFamilies): true,
 		string(domain.Children):      true,
 		string(domain.Veterans):      true,
 	}
@@ -1030,7 +1031,7 @@ func (h *Handler) createBenefit(c *gin.Context) {
 func (h *Handler) updateBenefit(c *gin.Context) {
 	id := c.Param("id")
 	logger.Info("updateBenefit called", zap.String("id", id))
-	
+
 	if id == "" {
 		logger.Error("benefit id is empty")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "benefit id is required"})
@@ -1049,8 +1050,8 @@ func (h *Handler) updateBenefit(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get benefit", "details": err.Error()})
 		return
 	}
-	
-	logger.Info("benefit loaded for update", 
+
+	logger.Info("benefit loaded for update",
 		zap.String("id", id),
 		zap.String("title", existingBenefit.Title),
 		zap.Any("tags", existingBenefit.Tags))
@@ -1061,7 +1062,7 @@ func (h *Handler) updateBenefit(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request", "details": err.Error()})
 		return
 	}
-	
+
 	logger.Info("request parsed", zap.String("id", id), zap.String("title", req.Title))
 
 	// Валидация типа льготы
@@ -1081,7 +1082,7 @@ func (h *Handler) updateBenefit(c *gin.Context) {
 		string(domain.Pensioners):    true,
 		string(domain.Disabled):      true,
 		string(domain.YoungFamilies): true,
-		string(domain.LowIncome):    true,
+		string(domain.LowIncome):     true,
 		string(domain.Students):      true,
 		string(domain.LargeFamilies): true,
 		string(domain.Children):      true,
@@ -1204,7 +1205,7 @@ func (h *Handler) updateBenefit(c *gin.Context) {
 
 	// Обновление льготы через сервис
 	if err := h.services.Benefits.Update(c.Request.Context(), existingBenefit); err != nil {
-		logger.Error("failed to update benefit", 
+		logger.Error("failed to update benefit",
 			zap.Error(err),
 			zap.String("benefit_id", id),
 			zap.Any("city_id", existingBenefit.CityID),

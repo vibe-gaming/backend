@@ -326,10 +326,11 @@ func (r *benefitRepository) GetAll(ctx context.Context, limit, offset int, filte
 		}
 	} else {
 		// Обычная сортировка без поиска
-		orderBy := "b.created_at"
-		orderDir := "DESC"
+		if filters != nil && filters.SortBy != "" {
+			// Если указана сортировка, используем её
+			orderBy := "b.created_at"
+			orderDir := "DESC"
 
-		if filters != nil {
 			// Определяем поле для сортировки
 			switch filters.SortBy {
 			case "views":
@@ -351,9 +352,17 @@ func (r *benefitRepository) GetAll(ctx context.Context, limit, offset int, filte
 			} else {
 				orderDir = "DESC"
 			}
-		}
 
-		orderClause = fmt.Sprintf("%s %s", orderBy, orderDir)
+			orderClause = fmt.Sprintf("%s %s", orderBy, orderDir)
+		} else {
+			// Если сортировка не указана, сортируем сначала по типу (federal, regional, commercial), затем по created_at
+			orderClause = `CASE b.type 
+				WHEN 'federal' THEN 1 
+				WHEN 'regional' THEN 2 
+				WHEN 'commercial' THEN 3 
+				ELSE 4 
+			END ASC, b.created_at DESC`
+		}
 	}
 
 	query += fmt.Sprintf(`
