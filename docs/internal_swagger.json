@@ -126,7 +126,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "PDF файл",
+                        "description": "OK",
                         "schema": {
                             "type": "file"
                         }
@@ -1245,10 +1245,10 @@
         "ErrorStruct": {
             "type": "object",
             "properties": {
-                "ErrorCode": {
+                "error_code": {
                     "type": "integer"
                 },
-                "ErrorMessage": {
+                "error_message": {
                     "type": "string"
                 }
             }
@@ -1275,6 +1275,29 @@
                     "type": "string"
                 }
             }
+        },
+        "domain.GroupType": {
+            "type": "string",
+            "enum": [
+                "pensioners",
+                "disabled",
+                "young_families",
+                "low_income",
+                "students",
+                "large_families",
+                "children",
+                "veterans"
+            ],
+            "x-enum-varnames": [
+                "UserGroupPensioners",
+                "UserGroupDisabled",
+                "UserGroupYoungFamilies",
+                "UserGroupLowIncome",
+                "UserGroupStudents",
+                "UserGroupLargeFamilies",
+                "UserGroupChildren",
+                "UserGroupVeterans"
+            ]
         },
         "domain.Organization": {
             "type": "object",
@@ -1368,7 +1391,7 @@
                     "type": "string"
                 },
                 "document_type": {
-                    "type": "string"
+                    "$ref": "#/definitions/domain.UserDocumentType"
                 },
                 "id": {
                     "type": "string"
@@ -1380,6 +1403,19 @@
                     "type": "string"
                 }
             }
+        },
+        "domain.UserDocumentType": {
+            "type": "string",
+            "enum": [
+                "passport",
+                "snils",
+                "registration"
+            ],
+            "x-enum-varnames": [
+                "UserDocumentTypePassport",
+                "UserDocumentTypeSNILS",
+                "UserDocumentTypeRegistration"
+            ]
         },
         "domain.UserGroup": {
             "type": "object",
@@ -1401,16 +1437,37 @@
                     "type": "string"
                 },
                 "status": {
-                    "type": "string"
+                    "$ref": "#/definitions/domain.VerificationStatus"
                 },
                 "type": {
-                    "type": "string"
+                    "$ref": "#/definitions/domain.GroupType"
                 },
                 "verified_at": {
                     "description": "Когда подтверждена",
                     "type": "string"
                 }
             }
+        },
+        "domain.VerificationStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "verified",
+                "rejected",
+                "expired"
+            ],
+            "x-enum-comments": {
+                "VerificationStatusExpired": "Истекла",
+                "VerificationStatusPending": "Ожидает подтверждения",
+                "VerificationStatusRejected": "Отклонена",
+                "VerificationStatusVerified": "Подтверждена"
+            },
+            "x-enum-varnames": [
+                "VerificationStatusPending",
+                "VerificationStatusVerified",
+                "VerificationStatusRejected",
+                "VerificationStatusExpired"
+            ]
         },
         "repository.UserBenefitsStats": {
             "type": "object",
@@ -1782,7 +1839,7 @@
                 "groups": {
                     "type": "array",
                     "items": {
-                        "type": "string"
+                        "$ref": "#/definitions/domain.GroupType"
                     }
                 }
             }
