@@ -23,6 +23,29 @@ const (
 	UserGroupVeterans      GroupType = "veterans"
 )
 
+func (g GroupType) StringLocale() string {
+	switch g {
+	case UserGroupPensioners:
+		return "пенсионеры"
+	case UserGroupDisabled:
+		return "инвалиды"
+	case UserGroupYoungFamilies:
+		return "молодые семьи"
+	case UserGroupLowIncome:
+		return "малоимущие"
+	case UserGroupStudents:
+		return "студенты"
+	case UserGroupLargeFamilies:
+		return "многодетные семьи"
+	case UserGroupChildren:
+		return "дети"
+	case UserGroupVeterans:
+		return "ветераны"
+	default:
+		return ""
+	}
+}
+
 type GroupTypeList []GroupType
 
 // Статус подтверждения группы
@@ -113,4 +136,3 @@ type UserDocument struct {
 	UpdatedAt      time.Time        `db:"updated_at" json:"updated_at"`
 	DeletedAt      *time.Time       `db:"deleted_at" json:"deleted_at,omitempty"`
 }
-

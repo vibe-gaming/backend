@@ -391,9 +391,28 @@ definitions:
       name:
         type: string
     type: object
+  v1.sendMessageRequest:
+    properties:
+      message:
+        type: string
+    type: object
+  v1.sendMessageResponse:
+    properties:
+      benefits:
+        items:
+          $ref: '#/definitions/v1.benefitResponse'
+        type: array
+      message:
+        type: string
+    type: object
   v1.speechResponse:
     properties:
       text:
+        type: string
+    type: object
+  v1.startChatResponse:
+    properties:
+      message:
         type: string
     type: object
   v1.userUpdateInfoRequest:
@@ -818,6 +837,59 @@ paths:
       summary: Get User Benefits Stats
       tags:
       - Benefits
+  /chat/message:
+    post:
+      consumes:
+      - application/json
+      description: Send message to chat bot
+      parameters:
+      - description: Message request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/v1.sendMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.sendMessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+      security:
+      - UserAuth: []
+      summary: Send Message
+      tags:
+      - Chat
+  /chat/start:
+    post:
+      consumes:
+      - application/json
+      description: Start chat with user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.startChatResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorStruct'
+      security:
+      - UserAuth: []
+      summary: Start Chat
+      tags:
+      - Chat
   /cities:
     get:
       consumes:

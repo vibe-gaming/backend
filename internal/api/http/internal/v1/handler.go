@@ -57,4 +57,5 @@ func (h *Handler) Init(api *gin.RouterGroup) {
 	h.initOrganizationsRoutes(v1)
 	h.initSpeechRoutes(v1)
 	h.initAdminRoutes(v1)
+	h.initChatRoutes(v1)
 }
