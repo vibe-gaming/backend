@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -96,10 +97,10 @@ func (s *BenefitService) GetAll(ctx context.Context, page, limit int, filters *B
 				} else {
 					// Формируем Boolean запрос из расширенных терминов
 					// Используем оригинальный запрос как основу для обязательных терминов
-					logger.Info("GigaChat enhancement successful", zap.Strings("enhanced_terms", enhancedTerms))
+					logger.Info("GigaChat enhancement successful", zap.Strings("enhanced_terms", enhancedTerms), zap.Int("enhanced_count", len(enhancedTerms)))
 					originalQuery := *filters.Search
 					booleanQuery := buildBooleanQuery(originalQuery, enhancedTerms)
-					logger.Info("Built boolean query", zap.String("query", booleanQuery))
+					logger.Info("Built boolean query", zap.String("query", booleanQuery), zap.String("original_query", originalQuery))
 					filters.Search = &booleanQuery
 					filters.SearchMode = "boolean"
 				}
@@ -388,6 +389,10 @@ func buildBooleanQuery(originalQuery string, enhancedTerms []string) string {
 			enhancedProcessed = append(enhancedProcessed, term)
 		}
 	}
+
+	// Сортируем термины для детерминированности (даже если они пришли в разном порядке)
+	// Это обеспечит одинаковые SQL-запросы при одинаковых терминах
+	sort.Strings(enhancedProcessed)
 
 	// Ограничиваем количество расширенных терминов
 	maxEnhanced := 10

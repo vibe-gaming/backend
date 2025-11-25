@@ -9,7 +9,9 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -30,6 +32,8 @@ type Client struct {
 	httpClient  *http.Client
 	token       *TokenResponse
 	tokenExpiry time.Time
+	// Кеш для результатов EnhanceSearchQuery (ключ - запрос, значение - расширенные термины)
+	enhanceCache sync.Map
 }
 
 // NewClient создает новый клиент GigaChat
@@ -205,6 +209,7 @@ type EnhancedSearchResult struct {
 // - исправляет орфографические ошибки
 // - добавляет морфологические варианты слов
 // - находит синонимы
+// Результаты кешируются для стабильности
 func (c *Client) EnhanceSearchQuery(ctx context.Context, query string) ([]string, error) {
 	logger.Info("EnhanceSearchQuery called",
 		zap.String("query", query),
@@ -214,6 +219,13 @@ func (c *Client) EnhanceSearchQuery(ctx context.Context, query string) ([]string
 	if query == "" {
 		logger.Info("Empty query provided to EnhanceSearchQuery")
 		return []string{query}, nil
+	}
+
+	// Проверяем кеш
+	queryLower := strings.ToLower(strings.TrimSpace(query))
+	if cached, ok := c.enhanceCache.Load(queryLower); ok {
+		logger.Info("Using cached enhanced terms", zap.String("query", query))
+		return cached.([]string), nil
 	}
 
 	// Проверяем и обновляем токен при необходимости
@@ -264,6 +276,7 @@ func (c *Client) EnhanceSearchQuery(ctx context.Context, query string) ([]string
 	chatResp, err := c.Chat(reqBody)
 	if err != nil {
 		logger.Error("Failed to send chat request", zap.Error(err))
+		// Не кешируем ошибки
 		return nil, fmt.Errorf("failed to send chat request: %w", err)
 	}
 
@@ -294,6 +307,17 @@ func (c *Client) EnhanceSearchQuery(ctx context.Context, query string) ([]string
 		}
 	}
 
+	// Сортируем термины для детерминированности (даже если GigaChat вернет их в разном порядке)
+	// Это обеспечит одинаковые результаты при одинаковых терминах
+	sort.Strings(terms)
+
+	// Ограничиваем количество терминов для стабильности результатов
+	// Используем максимум 12 терминов (этого достаточно для хорошего поиска)
+	maxTerms := 12
+	if len(terms) > maxTerms {
+		terms = terms[:maxTerms]
+	}
+
 	logger.Info("Parsed terms from GigaChat", zap.Strings("terms", terms), zap.Int("count", len(terms)))
 
 	// Если не удалось распарсить ответ, возвращаем оригинальный запрос
@@ -305,6 +329,10 @@ func (c *Client) EnhanceSearchQuery(ctx context.Context, query string) ([]string
 	logger.Info("Successfully enhanced search query",
 		zap.String("original", query),
 		zap.Strings("enhanced", terms))
+
+	// Кешируем результат
+	c.enhanceCache.Store(queryLower, terms)
+
 	return terms, nil
 }
 
