@@ -121,26 +121,34 @@ func (s *BenefitService) GetAll(ctx context.Context, page, limit int, filters *B
 		originalUserGroupTypes = filters.UserGroupTypes
 	}
 
-	if filters != nil && filters.IsChatRequest && filters.FilterByUserGroups != nil && *filters.FilterByUserGroups && filters.Search != nil && *filters.Search != "" {
-		// Проверяем, указывает ли запрос на другую целевую группу
+	// Если это запрос из чата и есть поисковый запрос, пытаемся извлечь целевую группу
+	if filters != nil && filters.IsChatRequest && filters.Search != nil && *filters.Search != "" {
 		searchQueryLower := strings.ToLower(*filters.Search)
-		userGroups := filters.UserGroupTypes
-		if userGroups == nil {
-			userGroups = []string{}
-		}
-		queryIndicatesOtherGroup := checkIfQueryIndicatesOtherGroup(searchQueryLower, userGroups)
+		extractedGroup := extractTargetGroupFromQuery(searchQueryLower)
 
-		if queryIndicatesOtherGroup {
-			// Запрос явно указывает на другую группу - ищем без фильтра по группам
-			logger.Info("Query indicates other group in chat, searching without group filter",
+		if extractedGroup != "" {
+			// Запрос явно указывает на целевую группу - применяем фильтр по этой группе
+			logger.Info("Extracted target group from query in chat, applying filter",
 				zap.String("search_query", *filters.Search),
-				zap.Strings("user_groups", userGroups))
+				zap.String("extracted_group", extractedGroup))
 
-			// Отключаем фильтр по группам
-			filters.FilterByUserGroups = nil
-			filters.UserGroupTypes = nil
+			// Применяем фильтр по извлеченной группе
+			filters.TargetGroups = []string{extractedGroup}
 
-			// Выполняем поиск без фильтра
+			// Если был включен фильтр по группам пользователя, отключаем его
+			// так как пользователь явно ищет льготы для другой группы
+			if filters.FilterByUserGroups != nil && *filters.FilterByUserGroups {
+				logger.Info("Disabling user group filter because query specifies different target group",
+					zap.String("extracted_group", extractedGroup),
+					zap.Strings("user_groups", filters.UserGroupTypes))
+				filters.FilterByUserGroups = nil
+				filters.UserGroupTypes = nil
+			}
+
+			// Сохраняем оригинальный поисковый запрос
+			originalSearch := filters.Search
+
+			// Сначала пробуем поиск с текстовым запросом
 			benefits, err := s.benefitRepository.GetAll(ctx, limit, offset, filters)
 			if err != nil {
 				return nil, 0, err
@@ -151,25 +159,87 @@ func (s *BenefitService) GetAll(ctx context.Context, page, limit int, filters *B
 				return nil, 0, err
 			}
 
-			logger.Info("Found results without group filter in chat",
+			// Если результатов мало (меньше лимита), убираем текстовый поиск из WHERE
+			// и показываем все льготы группы, отсортированные по релевантности
+			if total < int64(limit) && originalSearch != nil {
+				logger.Info("Few results with text search, showing all group benefits",
+					zap.Int64("current_total", total),
+					zap.Int("limit", limit),
+					zap.String("search_query", *originalSearch))
+
+				// Убираем текстовый поиск из WHERE, но оставляем для сортировки
+				// Создаем копию фильтров
+				filtersForSorting := *filters
+				// Убираем Search из WHERE, но оставляем для сортировки через отдельный механизм
+				// Пока просто убираем и показываем все льготы группы
+				filtersForSorting.Search = nil
+				filtersForSorting.SearchMode = ""
+
+				// Выполняем поиск без текстового фильтра в WHERE
+				allBenefits, err := s.benefitRepository.GetAll(ctx, limit*5, offset, &filtersForSorting)
+				if err != nil {
+					return nil, 0, err
+				}
+
+				allTotal, err := s.benefitRepository.Count(ctx, &filtersForSorting)
+				if err != nil {
+					return nil, 0, err
+				}
+
+				// Если нашли больше результатов, используем их
+				if allTotal > total {
+					logger.Info("Found more results without text filter",
+						zap.Int64("new_total", allTotal),
+						zap.Int64("old_total", total))
+
+					return allBenefits, allTotal, nil
+				}
+			}
+
+			logger.Info("Found results with target group filter in chat",
 				zap.Int64("total", total),
-				zap.String("search_query", *filters.Search))
+				zap.String("search_query", *filters.Search),
+				zap.String("target_group", extractedGroup))
 
 			return benefits, total, nil
 		}
 
-		// Запрос не указывает на другую группу - используем фильтр строго
-		benefits, err := s.benefitRepository.GetAll(ctx, limit, offset, filters)
-		if err != nil {
-			return nil, 0, err
-		}
+		// Если не удалось извлечь группу, но есть фильтр по группам пользователя
+		if filters.FilterByUserGroups != nil && *filters.FilterByUserGroups {
+			userGroups := filters.UserGroupTypes
+			if userGroups == nil {
+				userGroups = []string{}
+			}
+			queryIndicatesOtherGroup := checkIfQueryIndicatesOtherGroup(searchQueryLower, userGroups)
 
-		total, err := s.benefitRepository.Count(ctx, filters)
-		if err != nil {
-			return nil, 0, err
-		}
+			if queryIndicatesOtherGroup {
+				// Запрос указывает на другую группу, но не явно - ищем без фильтра по группам
+				logger.Info("Query indicates other group in chat, searching without group filter",
+					zap.String("search_query", *filters.Search),
+					zap.Strings("user_groups", userGroups))
 
-		return benefits, total, nil
+				// Отключаем фильтр по группам
+				filters.FilterByUserGroups = nil
+				filters.UserGroupTypes = nil
+
+				// Выполняем поиск без фильтра
+				benefits, err := s.benefitRepository.GetAll(ctx, limit, offset, filters)
+				if err != nil {
+					return nil, 0, err
+				}
+
+				total, err := s.benefitRepository.Count(ctx, filters)
+				if err != nil {
+					return nil, 0, err
+				}
+
+				logger.Info("Found results without group filter in chat",
+					zap.Int64("total", total),
+					zap.String("search_query", *filters.Search))
+
+				return benefits, total, nil
+			}
+		}
 	}
 
 	// Обычный поиск без специальной логики (для списка льгот фильтры работают строго)
@@ -192,12 +262,12 @@ func (s *BenefitService) GetAll(ctx context.Context, page, limit int, filters *B
 	return benefits, total, nil
 }
 
-// checkIfQueryIndicatesOtherGroup проверяет, указывает ли поисковый запрос на другую целевую группу,
-// отличную от групп пользователя
-func checkIfQueryIndicatesOtherGroup(searchQuery string, userGroups []string) bool {
-	// Маппинг ключевых слов на группы
+// extractTargetGroupFromQuery извлекает целевую группу из поискового запроса
+// Возвращает название группы, если запрос явно указывает на неё
+func extractTargetGroupFromQuery(searchQuery string) string {
+	// Маппинг ключевых слов на группы (приоритетные слова идут первыми)
 	groupKeywords := map[string][]string{
-		"students":       {"студент", "студентам", "студента", "студенты", "студенческая", "студенческие", "студенческий", "вуз", "университет", "институт", "академия", "колледж", "обучение", "образование"},
+		"students":       {"студент", "студентам", "студента", "студенты", "студенческая", "студенческие", "студенческий"},
 		"pensioners":     {"пенсионер", "пенсионерам", "пенсионера", "пенсионеры", "пенсионная", "пенсионные"},
 		"disabled":       {"инвалид", "инвалидам", "инвалида", "инвалиды", "инвалидность", "инвалидная", "инвалидные"},
 		"veterans":       {"ветеран", "ветеранам", "ветерана", "ветераны", "ветеранская", "ветеранские"},
@@ -207,34 +277,40 @@ func checkIfQueryIndicatesOtherGroup(searchQuery string, userGroups []string) bo
 		"low_income":     {"малоимущий", "малоимущим", "малоимущих", "малоимущие", "малообеспеченный", "малообеспеченным"},
 	}
 
-	// Проверяем, содержит ли запрос ключевые слова других групп
-	for groupType, keywords := range groupKeywords {
-		// Пропускаем группы пользователя
-		isUserGroup := false
-		for _, userGroup := range userGroups {
-			if userGroup == groupType {
-				isUserGroup = true
-				break
-			}
-		}
-		if isUserGroup {
-			continue
-		}
+	searchQueryLower := strings.ToLower(searchQuery)
 
-		// Проверяем наличие ключевых слов этой группы в запросе
+	// Проверяем каждую группу (в порядке приоритета)
+	for groupType, keywords := range groupKeywords {
 		for _, keyword := range keywords {
-			if strings.Contains(searchQuery, keyword) {
-				logger.Info("Query indicates other group",
+			if strings.Contains(searchQueryLower, keyword) {
+				logger.Info("Extracted target group from query",
 					zap.String("query", searchQuery),
-					zap.String("indicated_group", groupType),
-					zap.String("keyword", keyword),
-					zap.Strings("user_groups", userGroups))
-				return true
+					zap.String("extracted_group", groupType),
+					zap.String("keyword", keyword))
+				return groupType
 			}
 		}
 	}
 
-	return false
+	return ""
+}
+
+// checkIfQueryIndicatesOtherGroup проверяет, указывает ли поисковый запрос на другую целевую группу,
+// отличную от групп пользователя
+func checkIfQueryIndicatesOtherGroup(searchQuery string, userGroups []string) bool {
+	extractedGroup := extractTargetGroupFromQuery(searchQuery)
+	if extractedGroup == "" {
+		return false
+	}
+
+	// Проверяем, является ли извлеченная группа группой пользователя
+	for _, userGroup := range userGroups {
+		if userGroup == extractedGroup {
+			return false
+		}
+	}
+
+	return true
 }
 
 // containsBooleanOperators проверяет, содержит ли поисковый запрос операторы Boolean режима
