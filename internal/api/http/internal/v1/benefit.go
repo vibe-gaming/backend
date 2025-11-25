@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -171,12 +172,59 @@ func (h *Handler) getBenefitsList(c *gin.Context) {
 	}
 
 	if tagsStr := c.Query("tags"); tagsStr != "" {
-		// Разделяем по запятой и убираем пробелы
-		tags := strings.Split(tagsStr, ",")
-		for i, tag := range tags {
-			tags[i] = strings.TrimSpace(tag)
+		var tags []string
+
+		// Пытаемся распарсить как JSON массив (формат от TanStack Router)
+		if strings.HasPrefix(tagsStr, "[") && strings.HasSuffix(tagsStr, "]") {
+			if err := json.Unmarshal([]byte(tagsStr), &tags); err != nil {
+				// Если не получилось распарсить как JSON, используем формат через запятую
+				tags = strings.Split(tagsStr, ",")
+				for i, tag := range tags {
+					tags[i] = strings.TrimSpace(tag)
+				}
+			}
+		} else {
+			// Формат через запятую
+			tags = strings.Split(tagsStr, ",")
+			for i, tag := range tags {
+				tags[i] = strings.TrimSpace(tag)
+			}
 		}
-		filters.Tags = tags
+
+		// Обрабатываем специальный тег "available_to_me" - активируем фильтр по группам пользователя
+		filteredTags := make([]string, 0, len(tags))
+		for _, tag := range tags {
+			if tag == "available_to_me" {
+				// Активируем фильтр по группам пользователя
+				if userID, err := h.getUserUUID(c); err == nil {
+					filterByUserGroups := true
+					filters.FilterByUserGroups = &filterByUserGroups
+
+					// Получаем пользователя и его группы
+					user, err := h.services.Users.GetOneByID(c.Request.Context(), userID)
+					if err == nil {
+						verifiedGroups := []string{}
+						for _, group := range user.GroupType {
+							if group.Status == domain.VerificationStatusVerified {
+								verifiedGroups = append(verifiedGroups, string(group.Type))
+							}
+						}
+						if len(verifiedGroups) > 0 {
+							filters.UserGroupTypes = verifiedGroups
+							userIDStr := userID.String()
+							filters.UserID = &userIDStr
+						}
+					}
+				}
+				// Не добавляем "available_to_me" в список тегов для поиска в БД
+				continue
+			}
+			filteredTags = append(filteredTags, tag)
+		}
+
+		if len(filteredTags) > 0 {
+			filters.Tags = filteredTags
+		}
 	}
 
 	if categoriesStr := c.Query("categories"); categoriesStr != "" {
@@ -368,12 +416,6 @@ func (h *Handler) getBenefitsList(c *gin.Context) {
 			}
 			for i := range benefit.Organization.Buildings {
 				building := &benefit.Organization.Buildings[i]
-				logger.Info("building coordinates",
-					zap.String("id", building.ID.String()),
-					zap.Float64("latitude", building.Latitude),
-					zap.Float64("longitude", building.Longitude),
-					zap.String("gis_deeplink", building.GetGisDeeplink()),
-				)
 				organization.Buildings = append(organization.Buildings, organizationBuildingResponse{
 					ID:          building.ID.String(),
 					Address:     building.Address,
@@ -490,13 +532,6 @@ func (h *Handler) getBenefitByID(c *gin.Context) {
 		}
 		for i := range benefit.Organization.Buildings {
 			building := &benefit.Organization.Buildings[i]
-			logger.Info("building coordinates in getBenefitByID",
-				zap.String("id", building.ID.String()),
-				zap.Float64("latitude", building.Latitude),
-				zap.Float64("longitude", building.Longitude),
-				zap.String("gis_deeplink", building.GetGisDeeplink()),
-			)
-
 			var buildingTags []string
 
 			for _, buildingTag := range building.Tags {

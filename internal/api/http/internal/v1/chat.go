@@ -313,7 +313,8 @@ func extractSearchQuery(jsonText string) string {
 func (h *Handler) searchBenefits(ctx context.Context, userId uuid.UUID, searchQuery string) ([]*domain.Benefit, error) {
 	// Используем тот же флоу что и в getBenefits
 	filters := &service.BenefitFilters{
-		Search: &searchQuery,
+		Search:        &searchQuery,
+		IsChatRequest: true, // Помечаем, что это запрос из чата для fallback логики
 	}
 
 	// Получаем пользователя для фильтрации по группам

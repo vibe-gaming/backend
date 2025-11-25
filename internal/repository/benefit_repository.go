@@ -28,6 +28,7 @@ type BenefitFilters struct {
 	FilterFavoritesOnly *bool    // Фильтровать только избранные (favorites=true)
 	FilterByUserGroups  *bool    // Фильтровать по группам пользователя
 	UserGroupTypes      []string // Подтвержденные группы пользователя для фильтрации
+	IsChatRequest       bool     // Флаг, что это запрос из чата (для fallback логики)
 }
 
 type UserBenefitsStats struct {

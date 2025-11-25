@@ -95,9 +95,10 @@ func (s *BenefitService) GetAll(ctx context.Context, page, limit int, filters *B
 					filters.SearchMode = "boolean"
 				} else {
 					// Формируем Boolean запрос из расширенных терминов
-					// Используем ИЛИ между терминами для максимального охвата
+					// Используем оригинальный запрос как основу для обязательных терминов
 					logger.Info("GigaChat enhancement successful", zap.Strings("enhanced_terms", enhancedTerms))
-					booleanQuery := buildBooleanQuery(enhancedTerms)
+					originalQuery := *filters.Search
+					booleanQuery := buildBooleanQuery(originalQuery, enhancedTerms)
 					logger.Info("Built boolean query", zap.String("query", booleanQuery))
 					filters.Search = &booleanQuery
 					filters.SearchMode = "boolean"
@@ -108,6 +109,69 @@ func (s *BenefitService) GetAll(ctx context.Context, page, limit int, filters *B
 
 	offset := (page - 1) * limit
 
+	// Если это запрос из чата, включен фильтр по группам пользователя и есть поисковый запрос,
+	// проверяем, указывает ли запрос на другую целевую группу
+	// Если да - ищем без фильтра по группам, если нет - используем фильтр строго
+	// Для обычного списка льгот фильтры работают строго
+	var originalFilterByUserGroups *bool
+	var originalUserGroupTypes []string
+	if filters != nil {
+		originalFilterByUserGroups = filters.FilterByUserGroups
+		originalUserGroupTypes = filters.UserGroupTypes
+	}
+
+	if filters != nil && filters.IsChatRequest && filters.FilterByUserGroups != nil && *filters.FilterByUserGroups && filters.Search != nil && *filters.Search != "" {
+		// Проверяем, указывает ли запрос на другую целевую группу
+		searchQueryLower := strings.ToLower(*filters.Search)
+		userGroups := filters.UserGroupTypes
+		if userGroups == nil {
+			userGroups = []string{}
+		}
+		queryIndicatesOtherGroup := checkIfQueryIndicatesOtherGroup(searchQueryLower, userGroups)
+
+		if queryIndicatesOtherGroup {
+			// Запрос явно указывает на другую группу - ищем без фильтра по группам
+			logger.Info("Query indicates other group in chat, searching without group filter",
+				zap.String("search_query", *filters.Search),
+				zap.Strings("user_groups", userGroups))
+
+			// Отключаем фильтр по группам
+			filters.FilterByUserGroups = nil
+			filters.UserGroupTypes = nil
+
+			// Выполняем поиск без фильтра
+			benefits, err := s.benefitRepository.GetAll(ctx, limit, offset, filters)
+			if err != nil {
+				return nil, 0, err
+			}
+
+			total, err := s.benefitRepository.Count(ctx, filters)
+			if err != nil {
+				return nil, 0, err
+			}
+
+			logger.Info("Found results without group filter in chat",
+				zap.Int64("total", total),
+				zap.String("search_query", *filters.Search))
+
+			return benefits, total, nil
+		}
+
+		// Запрос не указывает на другую группу - используем фильтр строго
+		benefits, err := s.benefitRepository.GetAll(ctx, limit, offset, filters)
+		if err != nil {
+			return nil, 0, err
+		}
+
+		total, err := s.benefitRepository.Count(ctx, filters)
+		if err != nil {
+			return nil, 0, err
+		}
+
+		return benefits, total, nil
+	}
+
+	// Обычный поиск без специальной логики (для списка льгот фильтры работают строго)
 	benefits, err := s.benefitRepository.GetAll(ctx, limit, offset, filters)
 	if err != nil {
 		return nil, 0, err
@@ -118,7 +182,58 @@ func (s *BenefitService) GetAll(ctx context.Context, page, limit int, filters *B
 		return nil, 0, err
 	}
 
+	// Восстанавливаем оригинальные значения фильтров (на случай если они были изменены)
+	if originalFilterByUserGroups != nil {
+		filters.FilterByUserGroups = originalFilterByUserGroups
+		filters.UserGroupTypes = originalUserGroupTypes
+	}
+
 	return benefits, total, nil
+}
+
+// checkIfQueryIndicatesOtherGroup проверяет, указывает ли поисковый запрос на другую целевую группу,
+// отличную от групп пользователя
+func checkIfQueryIndicatesOtherGroup(searchQuery string, userGroups []string) bool {
+	// Маппинг ключевых слов на группы
+	groupKeywords := map[string][]string{
+		"students":       {"студент", "студентам", "студента", "студенты", "студенческая", "студенческие", "студенческий", "вуз", "университет", "институт", "академия", "колледж", "обучение", "образование"},
+		"pensioners":     {"пенсионер", "пенсионерам", "пенсионера", "пенсионеры", "пенсионная", "пенсионные"},
+		"disabled":       {"инвалид", "инвалидам", "инвалида", "инвалиды", "инвалидность", "инвалидная", "инвалидные"},
+		"veterans":       {"ветеран", "ветеранам", "ветерана", "ветераны", "ветеранская", "ветеранские"},
+		"children":       {"ребенок", "детям", "детей", "дети", "детская", "детские", "детский", "школьник", "школьникам"},
+		"young_families": {"молодая семья", "молодые семьи", "молодой семье", "молодых семей"},
+		"large_families": {"многодетная семья", "многодетные семьи", "многодетной семье", "многодетных семей"},
+		"low_income":     {"малоимущий", "малоимущим", "малоимущих", "малоимущие", "малообеспеченный", "малообеспеченным"},
+	}
+
+	// Проверяем, содержит ли запрос ключевые слова других групп
+	for groupType, keywords := range groupKeywords {
+		// Пропускаем группы пользователя
+		isUserGroup := false
+		for _, userGroup := range userGroups {
+			if userGroup == groupType {
+				isUserGroup = true
+				break
+			}
+		}
+		if isUserGroup {
+			continue
+		}
+
+		// Проверяем наличие ключевых слов этой группы в запросе
+		for _, keyword := range keywords {
+			if strings.Contains(searchQuery, keyword) {
+				logger.Info("Query indicates other group",
+					zap.String("query", searchQuery),
+					zap.String("indicated_group", groupType),
+					zap.String("keyword", keyword),
+					zap.Strings("user_groups", userGroups))
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // containsBooleanOperators проверяет, содержит ли поисковый запрос операторы Boolean режима
@@ -157,32 +272,153 @@ func addWildcardsToQuery(query string) string {
 	return strings.Join(processedWords, " ")
 }
 
-// buildBooleanQuery создает Boolean запрос из списка терминов
+// buildBooleanQuery создает Boolean запрос из оригинального запроса и расширенных терминов
 // Используется для поиска по нескольким вариантам слов (с ошибками, морфологией, синонимами)
-func buildBooleanQuery(terms []string) string {
-	if len(terms) == 0 {
-		return ""
+func buildBooleanQuery(originalQuery string, enhancedTerms []string) string {
+	// Список служебных слов, которые не должны быть обязательными терминами
+	// Эти слова часто встречаются в запросах, но не в описаниях льгот
+	stopWords := map[string]bool{
+		"льготы": true, "льгота": true, "льгот": true,
+		"скидки": true, "скидка": true, "скидок": true,
+		"найди": true, "найти": true, "найду": true, "найдет": true,
+		"для": true, "по": true, "в": true, "на": true, "с": true,
+		"мне": true, "меня": true,
+		"какие": true, "какой": true, "какая": true,
+		"есть": true, "имеются": true,
+		"про": true, "о": true,
 	}
 
-	// Добавляем wildcard к каждому термину и объединяем через OR (пробел в Boolean mode)
-	processedTerms := make([]string, 0, len(terms))
-	for _, term := range terms {
+	// Обрабатываем оригинальный запрос - разбиваем на слова
+	originalWords := strings.Fields(strings.TrimSpace(originalQuery))
+
+	// Фильтруем служебные слова и собираем значимые слова из оригинального запроса
+	originalSignificantTerms := make([]string, 0, len(originalWords))
+	for _, word := range originalWords {
+		word = strings.TrimSpace(word)
+		if word == "" {
+			continue
+		}
+		// Убираем знаки препинания в конце слова
+		word = strings.TrimRight(word, ".,!?;:")
+		if word == "" {
+			continue
+		}
+
+		// Пропускаем служебные слова
+		wordLower := strings.ToLower(word)
+		if stopWords[wordLower] {
+			continue
+		}
+
+		originalSignificantTerms = append(originalSignificantTerms, wordLower)
+	}
+
+	// Разделяем термины на основные (из оригинального запроса) и расширенные
+	primaryTerms := make([]string, 0)
+	enhancedTermsList := make([]string, 0)
+
+	// Основные термины - из оригинального запроса
+	for _, term := range originalSignificantTerms {
 		term = strings.TrimSpace(term)
 		if term == "" {
 			continue
 		}
-
-		// Для каждого термина добавляем wildcard для поиска по префиксу
-		// Например: "студент*" найдет "студент", "студенты", "студентам" и т.д.
-		if !strings.HasSuffix(term, "*") {
-			term = term + "*"
-		}
-		processedTerms = append(processedTerms, term)
+		primaryTerms = append(primaryTerms, term)
 	}
 
-	// В Boolean mode пробел между терминами означает OR
-	// Это позволит найти документы, содержащие хотя бы один из терминов
-	return strings.Join(processedTerms, " ")
+	// Расширенные термины - от GigaChat
+	for _, term := range enhancedTerms {
+		term = strings.TrimSpace(term)
+		if term == "" {
+			continue
+		}
+		termLower := strings.ToLower(term)
+
+		// Пропускаем дубликаты
+		isDuplicate := false
+		for _, origTerm := range originalSignificantTerms {
+			if origTerm == termLower {
+				isDuplicate = true
+				break
+			}
+		}
+		if isDuplicate {
+			continue
+		}
+
+		enhancedTermsList = append(enhancedTermsList, termLower)
+	}
+
+	// Обрабатываем основные термины: используем кавычки для фраз, wildcard для одиночных слов
+	primaryProcessed := make([]string, 0)
+	for _, term := range primaryTerms {
+		term = strings.TrimSpace(term)
+		if term == "" {
+			continue
+		}
+		if strings.Contains(term, " ") {
+			// Для фраз используем кавычки для точного поиска фразы
+			// Оператор > повышает вес термина при сортировке
+			primaryProcessed = append(primaryProcessed, ">"+`"`+term+`"`)
+		} else {
+			// Одиночное слово - добавляем wildcard
+			if !strings.HasSuffix(term, "*") {
+				term = term + "*"
+			}
+			// Оператор > повышает вес термина при сортировке
+			primaryProcessed = append(primaryProcessed, ">"+term)
+		}
+	}
+
+	// Обрабатываем расширенные термины: используем кавычки для фраз
+	enhancedProcessed := make([]string, 0)
+	for _, term := range enhancedTermsList {
+		if strings.Contains(term, " ") {
+			// Для фраз используем кавычки для точного поиска фразы в MySQL Boolean mode
+			// Кавычки означают, что слова должны идти подряд в указанном порядке
+			term = strings.TrimSpace(term)
+			if term != "" {
+				enhancedProcessed = append(enhancedProcessed, `"`+term+`"`)
+			}
+		} else {
+			// Одиночное слово - добавляем wildcard
+			if !strings.HasSuffix(term, "*") {
+				term = term + "*"
+			}
+			enhancedProcessed = append(enhancedProcessed, term)
+		}
+	}
+
+	// Ограничиваем количество расширенных терминов
+	maxEnhanced := 10
+	if len(enhancedProcessed) > maxEnhanced {
+		enhancedProcessed = enhancedProcessed[:maxEnhanced]
+	}
+
+	// Формируем финальный запрос:
+	// - Все термины опциональны (OR логика)
+	// - Основные термины с повышенным весом (>) для лучшей сортировки - они будут выше в результатах
+	// - Расширенные термины опциональны без дополнительного веса
+
+	if len(primaryProcessed) == 0 && len(enhancedProcessed) == 0 {
+		return ""
+	}
+
+	allTerms := make([]string, 0)
+
+	// Добавляем основные термины с повышенным весом (они будут выше в сортировке)
+	if len(primaryProcessed) > 0 {
+		allTerms = append(allTerms, primaryProcessed...)
+	}
+
+	// Добавляем расширенные термины как опциональные
+	if len(enhancedProcessed) > 0 {
+		allTerms = append(allTerms, enhancedProcessed...)
+	}
+
+	// Все термины объединяются через пробел (OR логика)
+	// Термины с оператором > будут иметь больший вес при сортировке
+	return strings.Join(allTerms, " ")
 }
 
 // correctCommonTypos исправляет распространенные опечатки в поисковых запросах
@@ -406,7 +642,8 @@ func (s *BenefitService) GetFilterStats(ctx context.Context, filters *BenefitFil
 					filters.SearchMode = "boolean"
 				} else {
 					// Формируем Boolean запрос из расширенных терминов
-					booleanQuery := buildBooleanQuery(enhancedTerms)
+					originalQuery := *filters.Search
+					booleanQuery := buildBooleanQuery(originalQuery, enhancedTerms)
 					filters.Search = &booleanQuery
 					filters.SearchMode = "boolean"
 				}

@@ -72,7 +72,5 @@ func (h *Handler) getUserUUID(c *gin.Context) (uuid.UUID, error) {
 		return uuid.Nil, errors.New("user id not found")
 	}
 
-	logger.Info("user id found", zap.String("user_id", id.(string)))
-
 	return uuid.MustParse(id.(string)), nil
 }
